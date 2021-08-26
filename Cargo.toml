@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    'node',
+    'pallets/threshold-signature',
+    'runtime',
+]
+[profile.release]
+panic = 'unwind'
