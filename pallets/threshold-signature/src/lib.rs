@@ -5,6 +5,12 @@
 /// <https://substrate.dev/docs/en/knowledgebase/runtime/frame>
 pub use pallet::*;
 
+//Exported dependencies.
+#[macro_use]
+pub extern crate bitcoin_hashes as hashes;
+
+mod mast;
+
 #[cfg(test)]
 mod mock;
 

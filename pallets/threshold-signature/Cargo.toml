@@ -28,12 +28,6 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'monthly-2021-08'
 version = '4.0.0-dev'
 
-[dependencies.codec]
-default-features = false
-features = ['derive']
-package = 'parity-scale-codec'
-version = '2.0.0'
-
 [dependencies.frame-benchmarking]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
@@ -56,10 +50,32 @@ version = '4.0.0-dev'
 [features]
 default = ['std']
 runtime-benchmarks = ['frame-benchmarking']
+try-runtime = ['frame-support/try-runtime']
 std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
     'frame-benchmarking/std',
+    "bitcoin_hashes/std",
 ]
-try-runtime = ['frame-support/try-runtime']
+no-std = [
+    "bitcoin_hashes/alloc",
+]
+
+[dependencies]
+libsecp256k1 = { version = "0.6", default-features = false, features = ["hmac", "static-context"] }
+libp2p = { version = "0.39.1", features = ["tcp-tokio", "mdns"] }
+arrayref = { version = "0.3.6" }
+bech32 = { version = "0.8.1" }
+digest = { version = "0.9.0", default-features = false }
+sha2 = { version = "0.9.5", default-features = false }
+hex = { version = "0.4.3" }
+
+rand = "0.8.4"
+serde = { version = "=1.0", features = ["derive"] }
+serde_json = "^1.0"
+serde_derive = "1.0"
+log = "0.4"
+
+codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
+bitcoin_hashes = { version = "0.10.0", default-features = false }
