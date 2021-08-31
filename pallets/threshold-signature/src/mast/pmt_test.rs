@@ -9,6 +9,9 @@ use core::cmp::min;
 use hashes::hex::FromHex;
 use rand::{thread_rng, Rng};
 
+#[cfg(not(feature = "std"))]
+use alloc::{vec, vec::Vec};
+
 #[test]
 fn pmt_tests() {
     let mut rng = thread_rng();

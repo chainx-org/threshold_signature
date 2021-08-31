@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-
 use super::error::Result;
 use super::{
     key::PrivateKey, pmt::PartialMerkleTree, serialize, ScriptId, ScriptMerkleNode, TapBranchHash,
@@ -10,6 +9,8 @@ use hashes::{
     hex::{FromHex, ToHex},
     Hash,
 };
+#[cfg(not(feature = "std"))]
+use alloc::{vec, vec::Vec, string::String};
 
 pub type XOnly = PrivateKey;
 

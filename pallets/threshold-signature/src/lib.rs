@@ -6,10 +6,13 @@
 pub use pallet::*;
 
 //Exported dependencies.
-// #[macro_use]
-// pub extern crate bitcoin_hashes as hashes;
+#[macro_use]
+pub extern crate bitcoin_hashes as hashes;
 
-// mod mast;
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+mod mast;
 
 #[cfg(test)]
 mod mock;

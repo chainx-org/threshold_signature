@@ -5,7 +5,9 @@
 
 use arrayref::{array_mut_ref, array_ref};
 use hex::FromHexError;
-use rand::{Rng, distributions::Uniform};
+
+#[cfg(feature="getrandom")]
+use rand::{RngCore, rngs::OsRng};
 
 use super::{
     taggedhash::HashInto
@@ -17,6 +19,9 @@ use libsecp256k1::{
     ECMULT_CONTEXT, ECMULT_GEN_CONTEXT,
 };
 use log::warn;
+
+#[cfg(not(feature = "std"))]
+use alloc::{vec, vec::Vec};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PublicKey(pub Affine);
@@ -344,13 +349,10 @@ impl PrivateKey {
         PrivateKey(self.0.neg())
     }
 
+    #[cfg(feature="getrandom")]
     pub fn generate_random() -> Result<Self, Error> {
         let mut key: [u8; 32] = [0u8; 32];
-        // OsRng.fill_bytes(&mut key);
-        let range = Uniform::from(0..20);
-        let values = rand::thread_rng().sample_iter(&range).take(32).collect::<Vec<u8>>();
-
-        key.copy_from_slice(values.as_slice());
+        OsRng.fill_bytes(&mut key);
         Self::parse(&key)
     }
 }

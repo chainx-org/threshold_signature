@@ -10,6 +10,9 @@ use super::{
 use hashes::Hash;
 use std::io;
 
+#[cfg(not(feature = "std"))]
+use alloc::{vec, vec::Vec};
+
 /// Data structure that represents a partial merkle tree.
 ///
 /// It represents a subset of the script_id's of a known script, in a way that

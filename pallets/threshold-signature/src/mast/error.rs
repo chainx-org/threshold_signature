@@ -2,6 +2,10 @@ use std::io;
 
 use hex::FromHexError;
 
+
+#[cfg(not(feature = "std"))]
+use alloc::{format, string::String};
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MastError {
     /// When header merkle root don't match to the root calculated from the partial merkle tree
