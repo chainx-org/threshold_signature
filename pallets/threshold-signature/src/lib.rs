@@ -1,7 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use mast::tagged_branch;
-pub use pallet::*;
-
 //Exported dependencies.
 #[macro_use]
 pub extern crate bitcoin_hashes as hashes;
@@ -27,6 +24,8 @@ use self::{
     primitive::{Addr, Script, Signature},
 };
 use frame_support::{dispatch::DispatchError, inherent::Vec};
+use mast::{key::PrivateKey, tagged_branch, ScriptMerkleNode};
+pub use pallet::*;
 use schnorrkel::{signing_context, PublicKey, Signature as SchnorrSignature};
 
 #[frame_support::pallet]
@@ -74,6 +73,8 @@ pub mod pallet {
         /// The constructed MAST is incorrect.
         /// NOTE: General error, may need to be optimized
         BadMast,
+        /// Signature verification failure
+        InvalidSignature,
     }
 
     #[pallet::call]
@@ -118,51 +119,70 @@ impl<T: Config> Pallet<T> {
     fn apply_verify_threshold_signature(
         addr: Addr,
         signature: Signature,
-        script: Script,
+        full_script: Script,
     ) -> Result<bool, DispatchError> {
         if !AddrToScript::<T>::contains_key(addr.clone()) {
             return Err(Error::<T>::AddrNotExist.into());
         }
 
         let scripts = AddrToScript::<T>::get(&addr);
+        // TODO: Optimize the name of variable
         let s = XOnly::from_vec(scripts).map_err::<Error<T>, _>(Into::into)?;
 
         let mast = Mast::new(Vec::from(&s[1..]));
-        let s1 = XOnly::parse_slice(&script).map_err::<Error<T>, _>(Into::into)?;
+        let s1 = XOnly::parse_slice(&full_script).map_err::<Error<T>, _>(Into::into)?;
 
         let proof = mast
             .generate_merkle_proof(&s1)
             .map_err::<Error<T>, _>(Into::into)?;
 
-        // TODO: Remove unwrap
-        // to verify proof
-        //
-        // if the proof contains an executing script, the merkel root is calculated from here
+        Self::verify_proof(addr, &proof, s)?;
+        Self::verify_signature(signature, full_script)?;
+
+        Ok(true)
+    }
+
+    // to verify proof
+    //
+    // if the proof contains an executing script, the merkel root is calculated from here
+    fn verify_proof(
+        addr: Addr,
+        proof: &[ScriptMerkleNode],
+        s: Vec<PrivateKey>,
+    ) -> Result<(), Error<T>> {
         let mut exec_script = proof[0];
         // compute merkel root
         for i in proof.iter().skip(1) {
-            exec_script = tagged_branch(exec_script, *i).unwrap();
+            exec_script = tagged_branch(exec_script, *i)?;
         }
-        let tweak = XOnly::parse_slice(&exec_script[..]).unwrap();
-        let tweaked = s[0].add_scalar(&tweak).unwrap();
+
+        let tweak = XOnly::parse_slice(&exec_script[..])?;
+        let tweaked = s[0].add_scalar(&tweak)?;
+
         // ensure that the final computed public key is the same as
         // the public key of the address in the output
         let pubkey = XOnly::parse_slice(addr.as_slice()).unwrap();
         if pubkey == tweaked {
-            return Err(Error::<T>::MastGenMerProofError.into());
+            return Err(Error::<T>::MastGenMerProofError);
         }
-        // to verify signature
-        let sig = SchnorrSignature::from_bytes(signature.as_slice()).unwrap();
+
+        Ok(())
+    }
+
+    // To verify signature
+    fn verify_signature(signature: Signature, script: Script) -> Result<(), Error<T>> {
+        let sig = SchnorrSignature::from_bytes(signature.as_slice())?;
 
         // TODO: Use the correct public key for signature verification
         // Which is the public key used to verify the signature and can there be some clarification?
         let agg_pubkey = PublicKey::from_bytes(&script).unwrap();
         let ctx = signing_context(b"substrate");
+
         // ctx.bytes(msg), which is this msg?
         if agg_pubkey.verify(ctx.bytes(&script), &sig).is_err() {
-            return Err(Error::<T>::MastGenMerProofError.into());
+            return Err(Error::<T>::InvalidSignature);
         }
 
-        Ok(true)
+        Ok(())
     }
 }
