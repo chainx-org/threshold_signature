@@ -1,8 +1,10 @@
 #![allow(dead_code)]
 #![allow(clippy::module_inception)]
+
+use super::XOnly;
 use super::{
-    error::Result, key::PrivateKey, pmt::PartialMerkleTree, serialize, ScriptId, ScriptMerkleNode,
-    TapBranchHash, TapLeafHash, TapTweakHash, VarInt,
+    error::Result, pmt::PartialMerkleTree, serialize, ScriptId, ScriptMerkleNode, TapBranchHash,
+    TapLeafHash, TapTweakHash, VarInt,
 };
 #[cfg(not(feature = "std"))]
 use alloc::{string::String, vec, vec::Vec};
@@ -12,8 +14,6 @@ use hashes::{
     Hash,
 };
 
-pub type XOnly = PrivateKey;
-
 /// Data structure that represents a partial mast tree
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Mast {
@@ -22,6 +22,11 @@ pub struct Mast {
 }
 
 impl Mast {
+    /// Create a mast instance
+    pub fn new(scripts: Vec<XOnly>) -> Self {
+        Mast { scripts }
+    }
+
     /// calculate merkle root
     pub fn calc_root(&self) -> Result<ScriptMerkleNode> {
         let script_ids = self

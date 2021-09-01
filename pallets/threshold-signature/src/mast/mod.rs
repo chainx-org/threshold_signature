@@ -9,6 +9,7 @@ pub mod taggedhash;
 
 pub use encode::*;
 pub use hash_types::*;
+pub use mast::*;
 
 #[cfg(feature = "std")]
 use std::{
@@ -19,6 +20,7 @@ use std::{
 #[cfg(not(feature = "std"))]
 use core2::io::{self, Cursor};
 
+use self::key::PrivateKey;
 #[cfg(not(feature = "std"))]
 use alloc::{
     borrow::ToOwned,
@@ -28,3 +30,5 @@ use alloc::{
     vec,
     vec::Vec,
 };
+
+pub type XOnly = PrivateKey;

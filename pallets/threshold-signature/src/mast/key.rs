@@ -345,6 +345,12 @@ impl PrivateKey {
         PrivateKey(self.0.neg())
     }
 
+    pub fn from_vec(vv: Vec<Vec<u8>>) -> Result<Vec<Self>, Error> {
+        vv.iter()
+            .map(|v| PrivateKey::parse_slice(&v))
+            .collect::<Result<Vec<Self>, Error>>()
+    }
+
     #[cfg(feature = "getrandom")]
     pub fn generate_random() -> Result<Self, Error> {
         let mut key: [u8; 32] = [0u8; 32];

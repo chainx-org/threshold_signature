@@ -1,8 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/// Edit this file to define custom logic or remove it if it is not needed.
-/// Learn more about FRAME and the core library of Substrate FRAME pallets:
-/// <https://substrate.dev/docs/en/knowledgebase/runtime/frame>
 pub use pallet::*;
 
 //Exported dependencies.
@@ -23,11 +20,21 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+mod primitive;
+
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+use frame_support::{dispatch::DispatchError, inherent::Vec};
+
+use self::{
+    mast::{Mast, XOnly},
+    primitive::{Addr, Script, Signature},
+};
+
 #[frame_support::pallet]
 pub mod pallet {
+    use super::*;
     use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
 
@@ -39,77 +46,103 @@ pub mod pallet {
     }
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(_);
 
-    // The pallet's runtime storage items.
-    // https://substrate.dev/docs/en/knowledgebase/runtime/storage
     #[pallet::storage]
-    #[pallet::getter(fn something)]
-    // Learn more about declaring storage items:
-    // https://substrate.dev/docs/en/knowledgebase/runtime/storage#declaring-storage-items
-    pub type Something<T> = StorageValue<_, u32>;
+    #[pallet::getter(fn addr_to_script)]
+    pub type AddrToScript<T: Config> = StorageMap<_, Twox64Concat, Addr, Vec<Script>, ValueQuery>;
 
-    // Pallets use events to inform users when important changes are made.
-    // https://substrate.dev/docs/en/knowledgebase/runtime/events
     #[pallet::event]
     #[pallet::metadata(T::AccountId = "AccountId")]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Event documentation should end with an array that provides descriptive names for event
-        /// parameters. [something, who]
-        SomethingStored(u32, T::AccountId),
+        /// Submit scripts to generate address. [addr]
+        GenerateAddress(Addr),
+        /// Verify threshold signature
+        VerifySignature,
     }
 
     // Errors inform users that something went wrong.
     #[pallet::error]
     pub enum Error<T> {
-        /// Error names should be descriptive.
-        NoneValue,
-        /// Errors should have helpful documentation associated with them.
-        StorageOverflow,
+        /// Error format of scripts
+        ScriptFormatError,
+        /// Error from mast generate address
+        MastGenAddrError,
+        /// Address not exist
+        AddrNotExist,
+        /// Error from mast generate Merkle proof
+        MastGenMerProof,
     }
 
-    // Dispatchable functions allows users to interact with the pallet and invoke state changes.
-    // These functions materialize as "extrinsics", which are often compared to transactions.
-    // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// An example dispatchable that takes a singles value as a parameter, writes the value to
-        /// storage and emits an event. This function must be dispatched by a signed extrinsic.
+        /// Generate threshold signature address according to the script provided by the user.
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-        pub fn do_something(origin: OriginFor<T>, something: u32) -> DispatchResult {
-            // Check that the extrinsic was signed and get the signer.
-            // This function will return an error if the extrinsic is not signed.
-            // https://substrate.dev/docs/en/knowledgebase/runtime/origin
-            let who = ensure_signed(origin)?;
-
-            // Update storage.
-            <Something<T>>::put(something);
-
-            // Emit an event.
-            Self::deposit_event(Event::SomethingStored(something, who));
-            // Return a successful DispatchResultWithPostInfo
+        pub fn generate_address(origin: OriginFor<T>, scripts: Vec<Script>) -> DispatchResult {
+            ensure_signed(origin)?;
+            let addr = Self::apply_generate_address(scripts)?;
+            Self::deposit_event(Event::GenerateAddress(addr));
             Ok(())
         }
 
-        /// An example dispatchable that may throw a custom error.
-        #[pallet::weight(10_000 + T::DbWeight::get().reads_writes(1,1))]
-        pub fn cause_error(origin: OriginFor<T>) -> DispatchResult {
-            let _who = ensure_signed(origin)?;
+        #[pallet::weight(10_000 + T::DbWeight::get().reads(1))]
+        pub fn verify_threshold_signature(
+            origin: OriginFor<T>,
+            addr: Addr,
+            signature: Signature,
+            script: Script,
+        ) -> DispatchResult {
+            ensure_signed(origin)?;
+            Self::apply_verify_threshold_signature(addr, signature, script)?;
+            Self::deposit_event(Event::VerifySignature);
+            Ok(())
+        }
+    }
+}
 
-            // Read a value from storage.
-            match <Something<T>>::get() {
-                // Return an error if the value has not been set.
-                None => Err(Error::<T>::NoneValue.into()),
-                Some(old) => {
-                    // Increment the value read from storage; will error in the event of overflow.
-                    let new = old.checked_add(1).ok_or(Error::<T>::StorageOverflow)?;
-                    // Update the value in storage with the incremented result.
-                    <Something<T>>::put(new);
-                    Ok(())
-                }
+impl<T: Config> Pallet<T> {
+    fn apply_generate_address(scripts: Vec<Script>) -> Result<Addr, DispatchError> {
+        if let Ok(s) = XOnly::from_vec(scripts.clone()) {
+            let mast = Mast::new(Vec::from(&s[1..]));
+            if let Ok(addr) = mast.generate_address(&s[0]) {
+                AddrToScript::<T>::insert(Vec::from(addr.clone()), scripts);
+                Ok(Vec::from(addr))
+            } else {
+                Err(Error::<T>::MastGenAddrError.into())
             }
+        } else {
+            Err(Error::<T>::ScriptFormatError.into())
+        }
+    }
+
+    fn apply_verify_threshold_signature(
+        addr: Addr,
+        _signature: Signature,
+        script: Script,
+    ) -> Result<bool, DispatchError> {
+        if !AddrToScript::<T>::contains_key(addr.clone()) {
+            return Err(Error::<T>::AddrNotExist.into());
+        }
+
+        let scripts = AddrToScript::<T>::get(addr);
+        if let Ok(s) = XOnly::from_vec(scripts) {
+            let mast = Mast::new(Vec::from(&s[1..]));
+
+            if let Ok(s1) = XOnly::parse_slice(&script) {
+                if let Ok(_proof) = mast.generate_merkle_proof(&s1) {
+                    // todo! verify proof
+                    // todo! verify signature
+                    Ok(true)
+                } else {
+                    Err(Error::<T>::MastGenMerProof.into())
+                }
+            } else {
+                Err(Error::<T>::ScriptFormatError.into())
+            }
+        } else {
+            Err(Error::<T>::ScriptFormatError.into())
         }
     }
 }
