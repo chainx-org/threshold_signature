@@ -39,12 +39,18 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Install stable toolchain
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
+          toolchain: nightly-2021-08-30
+          target: wasm32-unknown-unknown
           profile: minimal
-          toolchain: stable
           override: true
+          components: rustfmt, rust-src, clippy
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1

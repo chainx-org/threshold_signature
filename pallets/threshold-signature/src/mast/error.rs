@@ -1,10 +1,6 @@
-use std::io;
-
+use super::*;
+use core::result;
 use hex::FromHexError;
-
-
-#[cfg(not(feature = "std"))]
-use alloc::{format, string::String};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MastError {
@@ -87,4 +83,4 @@ impl From<hashes::hex::Error> for MastError {
     }
 }
 
-pub type Result<T> = std::result::Result<T, MastError>;
+pub type Result<T> = result::Result<T, MastError>;

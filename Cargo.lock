@@ -4054,6 +4054,7 @@ dependencies = [
  "arrayref",
  "bech32",
  "bitcoin_hashes",
+ "core2",
  "digest 0.9.0",
  "frame-benchmarking",
  "frame-support",

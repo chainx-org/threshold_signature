@@ -12,6 +12,9 @@ pub extern crate bitcoin_hashes as hashes;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
+#[cfg(not(feature = "std"))]
+extern crate core2;
+
 mod mast;
 
 #[cfg(test)]

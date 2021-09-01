@@ -1,14 +1,9 @@
 #![allow(dead_code)]
-use std::{
-    error, fmt,
-    io::{self, Cursor},
-};
-
 use super::*;
-use hashes::{Hash, hex::ToHex, sha256d};
+use hashes::{hex::ToHex, sha256d, Hash};
 
-#[cfg(not(feature = "std"))]
-use alloc::{vec, vec::Vec, string::String, collections::linked_list::Cursor, prelude::v1::Box};
+#[cfg(feature = "std")]
+use std::error;
 
 /// Encoding error
 #[derive(Debug)]

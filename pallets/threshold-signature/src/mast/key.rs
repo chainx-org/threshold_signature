@@ -6,12 +6,9 @@
 use arrayref::{array_mut_ref, array_ref};
 use hex::FromHexError;
 
-#[cfg(feature="getrandom")]
-use rand::{RngCore, rngs::OsRng};
-
-use super::{
-    taggedhash::HashInto
-};
+use super::taggedhash::HashInto;
+#[cfg(not(feature = "std"))]
+use alloc::{vec, vec::Vec};
 use core::{convert::TryFrom, ops::Neg};
 use libsecp256k1::{
     curve::{Affine, Field, Jacobian, Scalar},
@@ -19,9 +16,8 @@ use libsecp256k1::{
     ECMULT_CONTEXT, ECMULT_GEN_CONTEXT,
 };
 use log::warn;
-
-#[cfg(not(feature = "std"))]
-use alloc::{vec, vec::Vec};
+#[cfg(feature = "getrandom")]
+use rand::{rngs::OsRng, RngCore};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PublicKey(pub Affine);
@@ -349,7 +345,7 @@ impl PrivateKey {
         PrivateKey(self.0.neg())
     }
 
-    #[cfg(feature="getrandom")]
+    #[cfg(feature = "getrandom")]
     pub fn generate_random() -> Result<Self, Error> {
         let mut key: [u8; 32] = [0u8; 32];
         OsRng.fill_bytes(&mut key);
