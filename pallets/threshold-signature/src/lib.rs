@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use mast::tagged_branch;
 pub use pallet::*;
 
 //Exported dependencies.
@@ -26,6 +27,7 @@ mod primitive;
 mod benchmarking;
 
 use frame_support::{dispatch::DispatchError, inherent::Vec};
+use schnorrkel::{signing_context, PublicKey, Signature as SchnorrSignature};
 
 use self::{
     mast::{Mast, XOnly},
@@ -119,7 +121,7 @@ impl<T: Config> Pallet<T> {
 
     fn apply_verify_threshold_signature(
         addr: Addr,
-        _signature: Signature,
+        signature: Signature,
         script: Script,
     ) -> Result<bool, DispatchError> {
         if !AddrToScript::<T>::contains_key(addr.clone()) {
@@ -131,9 +133,38 @@ impl<T: Config> Pallet<T> {
             let mast = Mast::new(Vec::from(&s[1..]));
 
             if let Ok(s1) = XOnly::parse_slice(&script) {
-                if let Ok(_proof) = mast.generate_merkle_proof(&s1) {
-                    // todo! verify proof
-                    // todo! verify signature
+                if let Ok(proof) = mast.generate_merkle_proof(&s1) {
+                    // TODO: Remove unwrap
+
+                    // to verify proof
+                    //
+                    // if the proof contains an executing script, the merkel root is calculated from here
+                    let mut exec_script = proof[0];
+                    // compute merkel root
+                    for i in 1..proof.len() {
+                        exec_script = tagged_branch(exec_script, proof[i]).unwrap();
+                    }
+                    let tweak = XOnly::parse_slice(&exec_script[..]).unwrap();
+                    let tweaked = s[0].add_scalar(&tweak).unwrap();
+                    // ensure that the final computed public key is the same as
+                    // the public key of the address in the output
+                    // Where is the public key for the address?
+                    // Could there be more notes?
+                    // TODO： Use the public key of the address for comparison
+                    if !s.contains(&tweaked) {
+                        return Err(Error::<T>::MastGenMerProof.into());
+                    }
+                    // to verify signature
+                    let sig = SchnorrSignature::from_bytes(&signature.as_slice()).unwrap();
+
+                    // TODO: Use the correct public key for signature verification
+                    // Which is the public key used to verify the signature and can there be some clarification?
+                    let pubkey = PublicKey::from_bytes(&script).unwrap();
+                    let ctx = signing_context(b"substrate");
+                    // ctx.bytes(msg), which is this msg?
+                    if !pubkey.verify(ctx.bytes(&script), &sig).is_ok() {
+                        return Err(Error::<T>::MastGenMerProof.into());
+                    }
                     Ok(true)
                 } else {
                     Err(Error::<T>::MastGenMerProof.into())
