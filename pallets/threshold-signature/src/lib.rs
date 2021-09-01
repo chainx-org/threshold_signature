@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use core::slice::SlicePattern;
+
 use mast::tagged_branch;
 pub use pallet::*;
 
@@ -148,10 +150,8 @@ impl<T: Config> Pallet<T> {
                     let tweaked = s[0].add_scalar(&tweak).unwrap();
                     // ensure that the final computed public key is the same as
                     // the public key of the address in the output
-                    // Where is the public key for the address?
-                    // Could there be more notes?
-                    // TODO： Use the public key of the address for comparison
-                    if !s.contains(&tweaked) {
+                    let pubkey = XOnly::parse_slice(&addr.as_slice()).unwrap();
+                    if pubkey == tweaked {
                         return Err(Error::<T>::MastGenMerProof.into());
                     }
                     // to verify signature
@@ -159,10 +159,10 @@ impl<T: Config> Pallet<T> {
 
                     // TODO: Use the correct public key for signature verification
                     // Which is the public key used to verify the signature and can there be some clarification?
-                    let pubkey = PublicKey::from_bytes(&script).unwrap();
+                    let agg_pubkey = PublicKey::from_bytes(&script).unwrap();
                     let ctx = signing_context(b"substrate");
                     // ctx.bytes(msg), which is this msg?
-                    if !pubkey.verify(ctx.bytes(&script), &sig).is_ok() {
+                    if !agg_pubkey.verify(ctx.bytes(&script), &sig).is_ok() {
                         return Err(Error::<T>::MastGenMerProof.into());
                     }
                     Ok(true)
