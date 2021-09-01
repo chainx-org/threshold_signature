@@ -10,6 +10,7 @@ pub enum MastError {
     NoScripts,
     /// When there are too many scripts
     // TooManyScripts,
+
     /// General format error
     BadFormat(String),
 

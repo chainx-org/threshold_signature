@@ -72,12 +72,11 @@ impl Mast {
         x.extend(&inner_pubkey.serialize());
         x.extend(&root.to_vec());
         let program = TapTweakHash::hash(&x).to_vec();
-        // todo!(May need to add btc testnet prefix or other prefix.)
+        // TODO: May need to add btc testnet prefix or other prefix.
         // https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki#Test_vectors_for_Bech32m
-        let mut data = vec![u5::try_from_u8(1).expect("It will definitely be converted to u5")];
+        let mut data = vec![u5::try_from_u8(1)?];
         data.extend(program.check_base32()?);
         Ok(bech32::encode("bc", data, Variant::Bech32m)?)
-        // Ok(hex::encode(program))
     }
 }
 

@@ -347,7 +347,7 @@ impl PrivateKey {
 
     pub fn from_vec(vv: Vec<Vec<u8>>) -> Result<Vec<Self>, Error> {
         vv.iter()
-            .map(|v| PrivateKey::parse_slice(&v))
+            .map(|v| PrivateKey::parse_slice(v))
             .collect::<Result<Vec<Self>, Error>>()
     }
 

@@ -1,7 +1,7 @@
 pub mod encode;
 pub mod pmt;
 // pub mod merkle_root;
-mod error;
+pub mod error;
 pub mod hash_types;
 pub mod key;
 pub mod mast;

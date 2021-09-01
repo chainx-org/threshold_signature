@@ -12,25 +12,21 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 extern crate core2;
 
-mod mast;
-
-#[cfg(test)]
-mod mock;
-
-#[cfg(test)]
-mod tests;
-
-mod primitive;
-
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
-
-use frame_support::{dispatch::DispatchError, inherent::Vec};
+mod mast;
+#[cfg(test)]
+mod mock;
+mod primitive;
+#[cfg(test)]
+mod tests;
+mod types;
 
 use self::{
     mast::{Mast, XOnly},
     primitive::{Addr, Script, Signature},
 };
+use frame_support::{dispatch::DispatchError, inherent::Vec};
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -66,14 +62,17 @@ pub mod pallet {
     // Errors inform users that something went wrong.
     #[pallet::error]
     pub enum Error<T> {
-        /// Error format of scripts
-        ScriptFormatError,
-        /// Error from mast generate address
-        MastGenAddrError,
         /// Address not exist
         AddrNotExist,
+        /// Error format of scripts
+        ScriptFormatError,
         /// Error from mast generate Merkle proof
-        MastGenMerProof,
+        MastGenMerProofError,
+        /// Error from mast generate address
+        MastGenAddrError,
+        /// The constructed MAST is incorrect.
+        /// NOTE: General error, may need to be optimized
+        BadMast,
     }
 
     #[pallet::call]
@@ -104,17 +103,15 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
     fn apply_generate_address(scripts: Vec<Script>) -> Result<Addr, DispatchError> {
-        if let Ok(s) = XOnly::from_vec(scripts.clone()) {
-            let mast = Mast::new(Vec::from(&s[1..]));
-            if let Ok(addr) = mast.generate_address(&s[0]) {
-                AddrToScript::<T>::insert(Vec::from(addr.clone()), scripts);
-                Ok(Vec::from(addr))
-            } else {
-                Err(Error::<T>::MastGenAddrError.into())
-            }
-        } else {
-            Err(Error::<T>::ScriptFormatError.into())
-        }
+        let s = XOnly::from_vec(scripts.clone()).map_err::<Error<T>, _>(Into::into)?;
+
+        let mast = Mast::new(Vec::from(&s[1..]));
+        let addr = mast
+            .generate_address(&s[0])
+            .map_err::<Error<T>, _>(Into::into)?;
+
+        AddrToScript::<T>::insert(Vec::from(addr.clone()), scripts);
+        Ok(Vec::from(addr))
     }
 
     fn apply_verify_threshold_signature(
@@ -127,22 +124,16 @@ impl<T: Config> Pallet<T> {
         }
 
         let scripts = AddrToScript::<T>::get(addr);
-        if let Ok(s) = XOnly::from_vec(scripts) {
-            let mast = Mast::new(Vec::from(&s[1..]));
+        let s = XOnly::from_vec(scripts).map_err::<Error<T>, _>(Into::into)?;
 
-            if let Ok(s1) = XOnly::parse_slice(&script) {
-                if let Ok(_proof) = mast.generate_merkle_proof(&s1) {
-                    // todo! verify proof
-                    // todo! verify signature
-                    Ok(true)
-                } else {
-                    Err(Error::<T>::MastGenMerProof.into())
-                }
-            } else {
-                Err(Error::<T>::ScriptFormatError.into())
-            }
-        } else {
-            Err(Error::<T>::ScriptFormatError.into())
-        }
+        let mast = Mast::new(Vec::from(&s[1..]));
+        let s1 = XOnly::parse_slice(&script).map_err::<Error<T>, _>(Into::into)?;
+
+        let _proof = mast
+            .generate_merkle_proof(&s1)
+            .map_err::<Error<T>, _>(Into::into)?;
+        // todo! verify proof
+        // todo! verify signature
+        Ok(true)
     }
 }
