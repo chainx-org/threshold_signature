@@ -162,7 +162,7 @@ impl<T: Config> Pallet<T> {
         // ensure that the final computed public key is the same as
         // the public key of the address in the output
         let pubkey = XOnly::parse_slice(addr.as_slice()).unwrap();
-        if pubkey == tweaked {
+        if pubkey != tweaked {
             return Err(Error::<T>::MastGenMerProofError);
         }
 

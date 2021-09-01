@@ -8,7 +8,7 @@ use super::{
 };
 #[cfg(not(feature = "std"))]
 use alloc::{string::String, vec, vec::Vec};
-use bech32::{self, u5, CheckBase32, Variant};
+use bech32::{self, u5, ToBase32, Variant};
 use hashes::{
     hex::{FromHex, ToHex},
     Hash,
@@ -74,8 +74,8 @@ impl Mast {
         let program = TapTweakHash::hash(&x).to_vec();
         // TODO: May need to add btc testnet prefix or other prefix.
         // https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki#Test_vectors_for_Bech32m
-        let mut data = vec![u5::try_from_u8(1)?];
-        data.extend(program.check_base32()?);
+        let mut data = vec![u5::try_from_u8(1).expect("It will definitely be converted to u5")];
+        data.extend(program.to_base32());
         Ok(bech32::encode("bc", data, Variant::Bech32m)?)
     }
 }
