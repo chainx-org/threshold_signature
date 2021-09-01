@@ -19,5 +19,8 @@ fn generate_address_should_work() {
 
 #[test]
 fn verify_signature_should_work() {
-    new_test_ext().execute_with(|| {    });
+    new_test_ext().execute_with(|| {
+        // todo! verify signature  accord from srr25519 test data
+        // https://github.com/chainx-org/threshold_signature/issues/1#issuecomment-909896156
+    });
 }

@@ -68,15 +68,8 @@ impl Mast {
     /// generate threshold signature address
     pub fn generate_address(&self, inner_pubkey: &XOnly) -> Result<String> {
         let root = self.calc_root()?;
-        let mut x: Vec<u8> = vec![];
-        x.extend(&inner_pubkey.serialize());
-        x.extend(&root.to_vec());
-        let program = TapTweakHash::hash(&x).to_vec();
-        // TODO: May need to add btc testnet prefix or other prefix.
-        // https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki#Test_vectors_for_Bech32m
-        let mut data = vec![u5::try_from_u8(1).expect("It will definitely be converted to u5")];
-        data.extend(program.to_base32());
-        Ok(bech32::encode("bc", data, Variant::Bech32m)?)
+        let program = tweak_pubkey(inner_pubkey, &root);
+        try_to_bench32m(&program)
     }
 }
 
@@ -130,6 +123,26 @@ fn lexicographical_compare(
     }
 }
 
+/// Compute tweak public key
+pub fn tweak_pubkey(inner_pubkey: &XOnly, root: &ScriptMerkleNode) -> Vec<u8> {
+    // P + hash_tweak(P||root)G
+    // todo!(Here only hash_tweak(P||root) is calculated, and it needs to be converted into points on sr25519 for addition)
+    let mut x: Vec<u8> = vec![];
+    x.extend(&inner_pubkey.serialize());
+    x.extend(&root.to_vec());
+    // todo!(return should from Vec<u8> to XOnly?)
+    TapTweakHash::hash(&x).to_vec()
+}
+
+/// Convert to bench32m encode
+pub fn try_to_bench32m(program: &Vec<u8>) -> Result<String> {
+    // TODO: May need to add btc testnet prefix or other prefix.
+    // https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki#Test_vectors_for_Bech32m
+    let mut data = vec![u5::try_from_u8(1).expect("It will definitely be converted to u5")];
+    data.extend(program.to_base32());
+    Ok(bech32::encode("bc", data, Variant::Bech32m)?)
+}
+
 #[cfg(test)]
 mod mast_tests {
     use super::*;
@@ -163,17 +176,17 @@ mod mast_tests {
             &hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
                 .unwrap(),
         )
-        .unwrap();
+            .unwrap();
         let script_b = XOnly::parse_slice(
             &hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
                 .unwrap(),
         )
-        .unwrap();
+            .unwrap();
         let script_c = XOnly::parse_slice(
             &hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
                 .unwrap(),
         )
-        .unwrap();
+            .unwrap();
         let scripts = vec![script_a, script_b, script_c];
         let mast = Mast { scripts };
         let root = mast.calc_root().unwrap();
@@ -191,17 +204,17 @@ mod mast_tests {
             &hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
                 .unwrap(),
         )
-        .unwrap();
+            .unwrap();
         let script_b = XOnly::parse_slice(
             &hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
                 .unwrap(),
         )
-        .unwrap();
+            .unwrap();
         let script_c = XOnly::parse_slice(
             &hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
                 .unwrap(),
         )
-        .unwrap();
+            .unwrap();
         let scripts = vec![script_a.clone(), script_b, script_c];
         let mast = Mast { scripts };
         let proof = mast.generate_merkle_proof(&script_a).unwrap();
@@ -241,23 +254,23 @@ mod mast_tests {
             &hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
                 .unwrap(),
         )
-        .unwrap();
+            .unwrap();
 
         let script_a = XOnly::parse_slice(
             &hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
                 .unwrap(),
         )
-        .unwrap();
+            .unwrap();
         let script_b = XOnly::parse_slice(
             &hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
                 .unwrap(),
         )
-        .unwrap();
+            .unwrap();
         let script_c = XOnly::parse_slice(
             &hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
                 .unwrap(),
         )
-        .unwrap();
+            .unwrap();
         let scripts = vec![script_a, script_b, script_c];
         let mast = Mast { scripts };
         let root = mast.calc_root().unwrap();

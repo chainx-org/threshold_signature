@@ -20,11 +20,11 @@ mod tests;
 mod types;
 
 use self::{
-    mast::{Mast, XOnly},
+    mast::{tweak_pubkey, try_to_bench32m, Mast, XOnly},
     primitive::{Addr, Script, Signature},
 };
 use frame_support::{dispatch::DispatchError, inherent::Vec};
-use mast::{key::PrivateKey, tagged_branch, ScriptMerkleNode};
+use mast::{tagged_branch, ScriptMerkleNode};
 pub use pallet::*;
 use schnorrkel::{signing_context, PublicKey, Signature as SchnorrSignature};
 
@@ -148,7 +148,7 @@ impl<T: Config> Pallet<T> {
     fn verify_proof(
         addr: Addr,
         proof: &[ScriptMerkleNode],
-        s: Vec<PrivateKey>,
+        s: Vec<XOnly>,
     ) -> Result<(), Error<T>> {
         let mut exec_script = proof[0];
         // compute merkel root
@@ -156,13 +156,11 @@ impl<T: Config> Pallet<T> {
             exec_script = tagged_branch(exec_script, *i)?;
         }
 
-        let tweak = XOnly::parse_slice(&exec_script[..])?;
-        let tweaked = s[0].add_scalar(&tweak)?;
+        let tweaked = try_to_bench32m(&tweak_pubkey(&s[0], &exec_script))?;
 
         // ensure that the final computed public key is the same as
         // the public key of the address in the output
-        let pubkey = XOnly::parse_slice(addr.as_slice()).unwrap();
-        if pubkey != tweaked {
+        if addr != Vec::from(tweaked) {
             return Err(Error::<T>::MastGenMerProofError);
         }
 
