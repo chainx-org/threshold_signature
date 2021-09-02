@@ -21,7 +21,7 @@ mod types;
 
 use self::{
     mast::{tweak_pubkey, try_to_bench32m, Mast, XOnly},
-    primitive::{Addr, Script, Signature},
+    primitive::{Addr, Message, Script, Signature},
 };
 use frame_support::{dispatch::DispatchError, inherent::Vec};
 use mast::{tagged_branch, ScriptMerkleNode};
@@ -94,9 +94,10 @@ pub mod pallet {
             addr: Addr,
             signature: Signature,
             script: Script,
+            message: Message
         ) -> DispatchResult {
             ensure_signed(origin)?;
-            Self::apply_verify_threshold_signature(addr, signature, script)?;
+            Self::apply_verify_threshold_signature(addr, signature, script, message)?;
             Self::deposit_event(Event::VerifySignature);
             Ok(())
         }
@@ -120,6 +121,7 @@ impl<T: Config> Pallet<T> {
         addr: Addr,
         signature: Signature,
         full_script: Script,
+        message: Message
     ) -> Result<bool, DispatchError> {
         if !AddrToScript::<T>::contains_key(addr.clone()) {
             return Err(Error::<T>::AddrNotExist.into());
@@ -137,7 +139,7 @@ impl<T: Config> Pallet<T> {
             .map_err::<Error<T>, _>(Into::into)?;
 
         Self::verify_proof(addr, &proof, s)?;
-        Self::verify_signature(signature, full_script)?;
+        Self::verify_signature(signature, full_script, message)?;
 
         Ok(true)
     }
@@ -168,16 +170,13 @@ impl<T: Config> Pallet<T> {
     }
 
     // To verify signature
-    fn verify_signature(signature: Signature, script: Script) -> Result<(), Error<T>> {
+    fn verify_signature(signature: Signature, script: Script, message: Message) -> Result<(), Error<T>> {
         let sig = SchnorrSignature::from_bytes(signature.as_slice())?;
 
-        // TODO: Use the correct public key for signature verification
-        // Which is the public key used to verify the signature and can there be some clarification?
         let agg_pubkey = PublicKey::from_bytes(&script).unwrap();
-        let ctx = signing_context(b"substrate");
+        let ctx = signing_context(b"multi-sig");
 
-        // ctx.bytes(msg), which is this msg?
-        if agg_pubkey.verify(ctx.bytes(&script), &sig).is_err() {
+        if agg_pubkey.verify(ctx.bytes(&message), &sig).is_err() {
             return Err(Error::<T>::InvalidSignature);
         }
 
