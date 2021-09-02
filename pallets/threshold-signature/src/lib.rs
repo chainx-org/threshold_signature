@@ -9,8 +9,6 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 extern crate core2;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
 mod mast;
 #[cfg(test)]
 mod mock;
@@ -109,7 +107,9 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
     fn apply_generate_address(scripts: Vec<Script>) -> Result<Addr, DispatchError> {
-        let s = scripts.iter().map(|script| XOnly::try_from(script.clone()))
+        let s = scripts
+            .iter()
+            .map(|script| XOnly::try_from(script.clone()))
             .collect::<Result<Vec<XOnly>, _>>()
             .map_err::<Error<T>, _>(Into::into)?;
 
@@ -134,7 +134,9 @@ impl<T: Config> Pallet<T> {
 
         let scripts = AddrToScript::<T>::get(&addr);
         // TODO: Optimize the name of variable
-        let s = scripts.iter().map(|script| XOnly::try_from(script.clone()))
+        let s = scripts
+            .iter()
+            .map(|script| XOnly::try_from(script.clone()))
             .collect::<Result<Vec<XOnly>, _>>()
             .map_err::<Error<T>, _>(Into::into)?;
 

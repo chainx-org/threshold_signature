@@ -11,11 +11,12 @@ use super::{
 #[cfg(not(feature = "std"))]
 use alloc::{string::String, vec, vec::Vec};
 use bech32::{self, u5, ToBase32, Variant};
+use curve25519_dalek::scalar::Scalar;
 use hashes::{
     hex::{FromHex, ToHex},
     Hash,
 };
-use schnorrkel::PublicKey;
+use schnorrkel::{ExpansionMode, MiniSecretKey, PublicKey};
 
 use sp_core::sp_std::ops::Deref;
 
@@ -50,10 +51,7 @@ impl Mast {
 
     /// generate merkle proof
     pub fn generate_merkle_proof(&self, script: &XOnly) -> Result<Vec<ScriptMerkleNode>> {
-        assert!(self
-            .scripts
-            .iter()
-            .any(|s| *s == *script));
+        assert!(self.scripts.iter().any(|s| *s == *script));
         let mut matches = vec![];
         for s in self.scripts.iter() {
             if *s == *script {
@@ -134,13 +132,19 @@ pub fn tweak_pubkey(inner_pubkey: &[u8; 32], root: &ScriptMerkleNode) -> Vec<u8>
     x.extend(inner_pubkey);
     x.extend(&root.to_vec());
     let tweak_key = TapTweakHash::hash(&x);
-    tweak_key.to_vec()
     // todo!(tweak_key not right convert to PublicKey)
-    // let pubkey = PublicKey::from_bytes(&tweak_key[..]).unwrap();
+    let mut bytes = [0u8; 32];
+    bytes.copy_from_slice(&tweak_key[..]);
 
-    // let inner_pubkey = PublicKey::from_bytes(inner_pubkey).unwrap();
-    // pubkey.into_point().add_assign(inner_pubkey.as_point());
-    // pubkey.as_compressed().as_bytes().to_vec()
+    let scalar = Scalar::from_bytes_mod_order(bytes);
+
+    let secret = MiniSecretKey::from_bytes(scalar.as_bytes()).unwrap();
+    let pubkey = secret.expand_to_public(ExpansionMode::Uniform);
+
+    let mut point = pubkey.into_point();
+    let inner_pubkey = PublicKey::from_bytes(inner_pubkey).unwrap();
+    point.add_assign(inner_pubkey.as_point());
+    point.compress().as_bytes().to_vec()
 }
 
 /// Convert to bench32m encode
@@ -165,12 +169,12 @@ mod tests {
             hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
                 .unwrap(),
         )
-            .unwrap();
+        .unwrap();
         let script_b = XOnly::try_from(
             hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
                 .unwrap(),
         )
-            .unwrap();
+        .unwrap();
         let script_c = XOnly::try_from(
             hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
                 .unwrap(),
@@ -193,12 +197,12 @@ mod tests {
             hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
                 .unwrap(),
         )
-            .unwrap();
+        .unwrap();
         let script_b = XOnly::try_from(
             hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
                 .unwrap(),
         )
-            .unwrap();
+        .unwrap();
         let script_c = XOnly::try_from(
             hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
                 .unwrap(),
@@ -249,12 +253,12 @@ mod tests {
             hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
                 .unwrap(),
         )
-            .unwrap();
+        .unwrap();
         let script_b = XOnly::try_from(
             hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
                 .unwrap(),
         )
-            .unwrap();
+        .unwrap();
         let script_c = XOnly::try_from(
             hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
                 .unwrap(),
