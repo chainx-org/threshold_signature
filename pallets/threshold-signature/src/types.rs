@@ -1,7 +1,6 @@
 use schnorrkel::SignatureError;
 
 use crate::mast::error::MastError;
-use crate::mast::key::Error as KeyError;
 use crate::{Config, Error};
 
 impl<T: Config> From<MastError> for Error<T> {
@@ -12,13 +11,8 @@ impl<T: Config> From<MastError> for Error<T> {
             MastError::FromHexError(_) => Error::<T>::BadMast,
             MastError::MastBuildError => Error::<T>::MastGenMerProofError,
             MastError::EncodeToBech32Error(_) => Error::<T>::MastGenAddrError,
+            MastError::XOnlyInvalidLength => Error::<T>::XOnlyInvalidLength
         }
-    }
-}
-
-impl<T: Config> From<KeyError> for Error<T> {
-    fn from(_: KeyError) -> Self {
-        Error::<T>::BadMast
     }
 }
 

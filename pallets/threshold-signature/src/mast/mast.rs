@@ -3,8 +3,6 @@
 
 use core::ops::AddAssign;
 
-use crate::primitive::Script;
-
 use super::XOnly;
 use super::{
     error::Result, pmt::PartialMerkleTree, serialize, ScriptId, ScriptMerkleNode, TapBranchHash,
@@ -18,7 +16,8 @@ use hashes::{
     Hash,
 };
 use schnorrkel::PublicKey;
-use sp_core::sr25519;
+
+use sp_core::sp_std::ops::Deref;
 
 /// Data structure that represents a partial mast tree
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -54,10 +53,10 @@ impl Mast {
         assert!(self
             .scripts
             .iter()
-            .any(|s| s.serialize() == script.serialize()));
+            .any(|s| *s == *script));
         let mut matches = vec![];
         for s in self.scripts.iter() {
-            if s.serialize() == script.serialize() {
+            if *s == *script {
                 matches.push(true)
             } else {
                 matches.push(false)
@@ -74,7 +73,7 @@ impl Mast {
     /// generate threshold signature address
     pub fn generate_address(&self, inner_pubkey: &XOnly) -> Result<String> {
         let root = self.calc_root()?;
-        let program = tweak_pubkey(&inner_pubkey.serialize().to_vec(), &root);
+        let program = tweak_pubkey(&inner_pubkey, &root);
         try_to_bench32m(&program)
     }
 }
@@ -85,10 +84,9 @@ impl Mast {
 pub fn tagged_leaf(script: &XOnly) -> Result<ScriptId> {
     let mut x: Vec<u8> = vec![];
     x.extend(hex::decode("c0")?.iter());
-    let script_hash = script.serialize();
-    let ser_len = serialize(&VarInt(script_hash.len() as u64));
+    let ser_len = serialize(&VarInt(32u64));
     x.extend(&ser_len);
-    x.extend(&script_hash);
+    x.extend(script.deref());
     Ok(ScriptId::from_hex(&TapLeafHash::hash(&x).to_hex())?)
 }
 
@@ -130,19 +128,19 @@ fn lexicographical_compare(
 }
 
 /// Compute tweak public key
-pub fn tweak_pubkey(inner_pubkey: &[u8], root: &ScriptMerkleNode) -> Vec<u8> {
+pub fn tweak_pubkey(inner_pubkey: &[u8; 32], root: &ScriptMerkleNode) -> Vec<u8> {
     // P + hash_tweak(P||root)G
-    // todo!(Here only hash_tweak(P||root) is calculated, and it needs to be converted into points on sr25519 for addition)
     let mut x: Vec<u8> = vec![];
     x.extend(inner_pubkey);
     x.extend(&root.to_vec());
-    // todo!(return should from Vec<u8> to XOnly?)
     let tweak_key = TapTweakHash::hash(&x);
-    let pubkey = PublicKey::from_bytes(&tweak_key[..]).unwrap();
-    
-    let inner_pubkey = PublicKey::from_bytes(inner_pubkey).unwrap();
-    pubkey.into_point().add_assign(inner_pubkey.as_point());
-    pubkey.as_compressed().as_bytes().to_vec()
+    tweak_key.to_vec()
+    // todo!(tweak_key not right convert to PublicKey)
+    // let pubkey = PublicKey::from_bytes(&tweak_key[..]).unwrap();
+
+    // let inner_pubkey = PublicKey::from_bytes(inner_pubkey).unwrap();
+    // pubkey.into_point().add_assign(inner_pubkey.as_point());
+    // pubkey.as_compressed().as_bytes().to_vec()
 }
 
 /// Convert to bench32m encode
@@ -159,6 +157,7 @@ mod mast_tests {
     use super::*;
     use bech32::{u5, ToBase32, Variant};
     use hashes::hex::ToHex;
+    use sp_core::sp_std::convert::TryFrom;
 
     #[test]
     fn test_ser_compact_size_tests() {
@@ -183,18 +182,18 @@ mod mast_tests {
 
     #[test]
     fn mast_generate_root_should_work() {
-        let script_a = XOnly::parse_slice(
-            &hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
+        let script_a = XOnly::try_from(
+            hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
                 .unwrap(),
         )
-        .unwrap();
-        let script_b = XOnly::parse_slice(
-            &hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
+            .unwrap();
+        let script_b = XOnly::try_from(
+            hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
                 .unwrap(),
         )
-        .unwrap();
-        let script_c = XOnly::parse_slice(
-            &hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
+            .unwrap();
+        let script_c = XOnly::try_from(
+            hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
                 .unwrap(),
         )
         .unwrap();
@@ -211,18 +210,18 @@ mod mast_tests {
 
     #[test]
     fn mast_generate_merkle_proof_should_work() {
-        let script_a = XOnly::parse_slice(
-            &hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
+        let script_a = XOnly::try_from(
+            hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
                 .unwrap(),
         )
-        .unwrap();
-        let script_b = XOnly::parse_slice(
-            &hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
+            .unwrap();
+        let script_b = XOnly::try_from(
+            hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
                 .unwrap(),
         )
-        .unwrap();
-        let script_c = XOnly::parse_slice(
-            &hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
+            .unwrap();
+        let script_c = XOnly::try_from(
+            hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
                 .unwrap(),
         )
         .unwrap();
@@ -261,24 +260,24 @@ mod mast_tests {
 
     #[test]
     fn test_bech32m_addr() {
-        let internal_key = XOnly::parse_slice(
-            &hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
+        let internal_key = XOnly::try_from(
+            hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
                 .unwrap(),
         )
         .unwrap();
 
-        let script_a = XOnly::parse_slice(
-            &hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
+        let script_a = XOnly::try_from(
+            hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
                 .unwrap(),
         )
-        .unwrap();
-        let script_b = XOnly::parse_slice(
-            &hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
+            .unwrap();
+        let script_b = XOnly::try_from(
+            hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
                 .unwrap(),
         )
-        .unwrap();
-        let script_c = XOnly::parse_slice(
-            &hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
+            .unwrap();
+        let script_c = XOnly::try_from(
+            hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
                 .unwrap(),
         )
         .unwrap();
@@ -295,22 +294,4 @@ mod mast_tests {
             root.to_hex()
         );
     }
-}
-
-/// NOTE: Rough handling
-pub fn serialize_key(who: sr25519::Public) -> [u8; 32] {
-    <[u8; 32]>::from(who)
-}
-
-pub fn serialize_script(script: Script) -> [u8; 32] {
-    let mut k = [0u8; 32];
-    k.copy_from_slice(&script);
-    k
-    // <[u8; 32]>::from(k)
-}
-
-pub fn serialize_vec_script(vv: Vec<Script>) -> Vec<sr25519::Public> {
-    vv.iter()
-        .map(|v| sr25519::Public::from_raw(serialize_script(v.to_vec())))
-        .collect::<Vec<sr25519::Public>>()
 }

@@ -27,6 +27,7 @@ use frame_support::{dispatch::DispatchError, inherent::Vec};
 use mast::{tagged_branch, ScriptMerkleNode};
 pub use pallet::*;
 use schnorrkel::{signing_context, PublicKey, Signature as SchnorrSignature};
+use sp_core::sp_std::convert::TryFrom;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -75,6 +76,8 @@ pub mod pallet {
         BadMast,
         /// Signature verification failure
         InvalidSignature,
+        /// XOnly Invalid length
+        XOnlyInvalidLength,
     }
 
     #[pallet::call]
@@ -106,7 +109,9 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
     fn apply_generate_address(scripts: Vec<Script>) -> Result<Addr, DispatchError> {
-        let s = XOnly::from_vec(scripts.clone()).map_err::<Error<T>, _>(Into::into)?;
+        let s = scripts.iter().map(|script| XOnly::try_from(script.clone()))
+            .collect::<Result<Vec<XOnly>, _>>()
+            .map_err::<Error<T>, _>(Into::into)?;
 
         let mast = Mast::new(Vec::from(&s[1..]));
         let addr = mast
@@ -129,10 +134,12 @@ impl<T: Config> Pallet<T> {
 
         let scripts = AddrToScript::<T>::get(&addr);
         // TODO: Optimize the name of variable
-        let s = XOnly::from_vec(scripts).map_err::<Error<T>, _>(Into::into)?;
+        let s = scripts.iter().map(|script| XOnly::try_from(script.clone()))
+            .collect::<Result<Vec<XOnly>, _>>()
+            .map_err::<Error<T>, _>(Into::into)?;
 
         let mast = Mast::new(Vec::from(&s[1..]));
-        let s1 = XOnly::parse_slice(&full_script).map_err::<Error<T>, _>(Into::into)?;
+        let s1 = XOnly::try_from(full_script.clone()).map_err::<Error<T>, _>(Into::into)?;
 
         let proof = mast
             .generate_merkle_proof(&s1)
@@ -154,7 +161,7 @@ impl<T: Config> Pallet<T> {
             exec_script = tagged_branch(exec_script, *i)?;
         }
 
-        let tweaked = try_to_bench32m(&tweak_pubkey(&s[0].serialize().to_vec(), &exec_script))?;
+        let tweaked = try_to_bench32m(&tweak_pubkey(&s[0], &exec_script))?;
 
         // ensure that the final computed public key is the same as
         // the public key of the address in the output

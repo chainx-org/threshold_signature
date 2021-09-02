@@ -20,6 +20,8 @@ pub enum MastError {
     MastBuildError,
     /// Bech32m encoding error
     EncodeToBech32Error(String),
+    /// XOnly Invalid length
+    XOnlyInvalidLength
 }
 
 impl From<io::Error> for MastError {
