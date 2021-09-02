@@ -4080,6 +4080,7 @@ dependencies = [
  "bech32",
  "bitcoin_hashes",
  "core2",
+ "curve25519-dalek-ng",
  "digest 0.9.0",
  "frame-benchmarking",
  "frame-support",

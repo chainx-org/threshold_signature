@@ -34,6 +34,7 @@ log = "0.4"
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 bitcoin_hashes = { version = "0.10.0", default-features = false, features = ["alloc"]}
 schnorrkel = { version = "0.10.1", default-features = false, features = ["u64_backend"]}
+curve25519-dalek = {package = "curve25519-dalek-ng", version = "4.0", default-features = false }
 
 [features]
 default = ['std', 'getrandom']
@@ -47,9 +48,11 @@ std = [
     'frame-benchmarking/std',
     "bitcoin_hashes/std",
     "hex/std",
-    "schnorrkel/std"
+    "schnorrkel/std",
+    "curve25519-dalek/std"
 ]
 no-std = [
     "bitcoin_hashes/alloc",
     "core2/alloc",
+    "curve25519-dalek/alloc"
 ]

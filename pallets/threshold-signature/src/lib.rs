@@ -20,7 +20,7 @@ mod tests;
 mod types;
 
 use self::{
-    mast::{tweak_pubkey, try_to_bench32m, Mast, XOnly},
+    mast::{try_to_bench32m, tweak_pubkey, Mast, XOnly},
     primitive::{Addr, Script, Signature},
 };
 use frame_support::{dispatch::DispatchError, inherent::Vec};
@@ -145,18 +145,14 @@ impl<T: Config> Pallet<T> {
     // to verify proof
     //
     // if the proof contains an executing script, the merkel root is calculated from here
-    fn verify_proof(
-        addr: Addr,
-        proof: &[ScriptMerkleNode],
-        s: Vec<XOnly>,
-    ) -> Result<(), Error<T>> {
+    fn verify_proof(addr: Addr, proof: &[ScriptMerkleNode], s: Vec<XOnly>) -> Result<(), Error<T>> {
         let mut exec_script = proof[0];
         // compute merkel root
         for i in proof.iter().skip(1) {
             exec_script = tagged_branch(exec_script, *i)?;
         }
 
-        let tweaked = try_to_bench32m(&tweak_pubkey(&s[0], &exec_script))?;
+        let tweaked = try_to_bench32m(&tweak_pubkey(&s[0].serialize().to_vec(), &exec_script))?;
 
         // ensure that the final computed public key is the same as
         // the public key of the address in the output
