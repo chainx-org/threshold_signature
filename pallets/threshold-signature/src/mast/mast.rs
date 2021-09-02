@@ -3,6 +3,8 @@
 
 use core::ops::AddAssign;
 
+use crate::primitive::Script;
+
 use super::XOnly;
 use super::{
     error::Result, pmt::PartialMerkleTree, serialize, ScriptId, ScriptMerkleNode, TapBranchHash,
@@ -16,6 +18,7 @@ use hashes::{
     Hash,
 };
 use schnorrkel::PublicKey;
+use sp_core::sr25519;
 
 /// Data structure that represents a partial mast tree
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -292,4 +295,22 @@ mod mast_tests {
             root.to_hex()
         );
     }
+}
+
+/// NOTE: Rough handling
+pub fn serialize_key(who: sr25519::Public) -> [u8; 32] {
+    <[u8; 32]>::from(who)
+}
+
+pub fn serialize_script(script: Script) -> [u8; 32] {
+    let mut k = [0u8; 32];
+    k.copy_from_slice(&script);
+    k
+    // <[u8; 32]>::from(k)
+}
+
+pub fn serialize_vec_script(vv: Vec<Script>) -> Vec<sr25519::Public> {
+    vv.iter()
+        .map(|v| sr25519::Public::from_raw(serialize_script(v.to_vec())))
+        .collect::<Vec<sr25519::Public>>()
 }
