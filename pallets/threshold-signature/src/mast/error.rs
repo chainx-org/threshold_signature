@@ -4,18 +4,12 @@ use hex::FromHexError;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MastError {
-    /// When header merkle root don't match to the root calculated from the partial merkle tree
-    // MerkleRootMismatch,
     /// When partial merkle tree contains no scripts
     NoScripts,
-    /// When there are too many scripts
-    // TooManyScripts,
-
     /// General format error
     BadFormat(String),
-
+    /// Format error of hex
     FromHexError(String),
-    // SerializeLengthError,
     /// Indicates whether the MAST build error
     MastBuildError,
     /// Bech32m encoding error

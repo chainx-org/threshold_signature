@@ -153,32 +153,11 @@ pub fn try_to_bench32m(program: &[u8]) -> Result<String> {
 }
 
 #[cfg(test)]
-mod mast_tests {
+mod tests {
     use super::*;
     use bech32::{u5, ToBase32, Variant};
     use hashes::hex::ToHex;
-    use sp_core::sp_std::convert::TryFrom;
-
-    #[test]
-    fn test_ser_compact_size_tests() {
-        let r1 = serialize(&VarInt(34_u64));
-        let r2 = serialize(&VarInt(253_u64));
-        let r3 = serialize(&VarInt(254_u64));
-        let r4 = serialize(&VarInt(255_u64));
-        let r5 = serialize(&VarInt(55555_u64));
-        let r6 = serialize(&VarInt(666666_u64));
-        let r7 = serialize(&VarInt(999999999_u64));
-        let r8 = serialize(&VarInt(10000000000000_u64));
-
-        assert_eq!(r1.to_hex(), "22");
-        assert_eq!(r2.to_hex(), "fdfd00");
-        assert_eq!(r3.to_hex(), "fdfe00");
-        assert_eq!(r4.to_hex(), "fdff00");
-        assert_eq!(r5.to_hex(), "fd03d9");
-        assert_eq!(r6.to_hex(), "fe2a2c0a00");
-        assert_eq!(r7.to_hex(), "feffc99a3b");
-        assert_eq!(r8.to_hex(), "ff00a0724e18090000");
-    }
+    use core::convert::TryFrom;
 
     #[test]
     fn mast_generate_root_should_work() {

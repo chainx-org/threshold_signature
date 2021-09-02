@@ -12,11 +12,11 @@ pub use mast::*;
 #[cfg(feature = "std")]
 use std::{
     fmt,
-    io::{self, Cursor},
+    io,
 };
 
 #[cfg(not(feature = "std"))]
-use core2::io::{self, Cursor};
+use core2::io;
 
 #[cfg(not(feature = "std"))]
 use alloc::{

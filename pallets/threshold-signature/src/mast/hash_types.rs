@@ -1,30 +1,4 @@
-use super::encode::{Decodable, Encodable, Error};
 use hashes::{hash_newtype, sha256, sha256d, sha256t, Hash};
-
-#[cfg(feature = "std")]
-use std::io;
-
-#[cfg(not(feature = "std"))]
-use core2::io;
-
-macro_rules! impl_hashencode {
-    ($hashtype:ident) => {
-        impl Encodable for $hashtype {
-            fn consensus_encode<S: io::Write>(&self, s: S) -> Result<usize, io::Error> {
-                self.0.consensus_encode(s)
-            }
-        }
-
-        impl Decodable for $hashtype {
-            fn consensus_decode<D: io::Read>(d: D) -> Result<Self, Error> {
-                use $crate::hashes::Hash;
-                Ok(Self::from_inner(
-                    <<$hashtype as $crate::hashes::Hash>::Inner>::consensus_decode(d)?,
-                ))
-            }
-        }
-    };
-}
 
 /// The SHA-256 midstate value for the TapLeaf hash.
 pub const MIDSTATE_TAPLEAF: [u8; 32] = [
@@ -133,11 +107,8 @@ hash_newtype!(
     doc = "A hash of the Merkle tree branch or root for transactions"
 );
 
-impl_hashencode!(ScriptId);
-impl_hashencode!(ScriptMerkleNode);
-
 #[cfg(test)]
-mod tag_test {
+mod tests {
     use super::super::hash_types::*;
     use hashes::{hex::ToHex, sha256, sha256t::Tag, Hash, HashEngine};
 
