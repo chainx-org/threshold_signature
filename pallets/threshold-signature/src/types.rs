@@ -6,12 +6,14 @@ use crate::{Config, Error};
 impl<T: Config> From<MastError> for Error<T> {
     fn from(err: MastError) -> Self {
         match err {
-            MastError::InvalidConstructedMast(_s) => Error::<T>::BadMast,
-            MastError::FromHexError(_) => Error::<T>::BadMast,
-            MastError::MastBuildError => Error::<T>::MastGenMerProofError,
-            MastError::EncodeToBech32Error(_) => Error::<T>::MastGenAddrError,
-            MastError::IoError(_) => Error::<T>::BadMast,
-            MastError::KeyPairError(_) => Error::<T>::BadMast,
+            MastError::MastBuildError => Error::<T>::MastBuildError,
+            MastError::InvalidMast(_) => Error::<T>::InvalidMast,
+            MastError::MastGenProofError => Error::<T>::MastGenProofError,
+            MastError::MastGenAddrError => Error::<T>::MastGenAddrError,
+            MastError::FromHexError(_) => Error::<T>::InvalidEncoding,
+            MastError::EncodeToBech32Error(_) => Error::<T>::InvalidEncoding,
+            MastError::IoError(_) => Error::<T>::InvalidEncoding,
+            MastError::KeyPairError(_) => Error::<T>::InvalidEncoding,
         }
     }
 }

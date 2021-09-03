@@ -4,6 +4,7 @@
 use core::ops::AddAssign;
 
 use super::XOnly;
+use super::error::MastError;
 use super::{
     error::Result, pmt::PartialMerkleTree, serialize, ScriptId, ScriptMerkleNode, TapBranchHash,
     TapLeafHash, TapTweakHash, VarInt,
@@ -13,6 +14,7 @@ use alloc::{string::String, vec, vec::Vec};
 use bech32::{self, u5, ToBase32, Variant};
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::scalar::Scalar;
+use frame_support::sp_tracing::debug;
 use hashes::{
     hex::{FromHex, ToHex},
     Hash,
@@ -52,28 +54,44 @@ impl Mast {
 
     /// generate merkle proof
     pub fn generate_merkle_proof(&self, script: &XOnly) -> Result<Vec<ScriptMerkleNode>> {
-        assert!(self.scripts.iter().any(|s| *s == *script));
-        let mut matches = vec![];
-        for s in self.scripts.iter() {
-            if *s == *script {
-                matches.push(true)
-            } else {
-                matches.push(false)
+        let proof = {
+            assert!(self.scripts.iter().any(|s| *s == *script));
+            let mut matches = vec![];
+            for s in self.scripts.iter() {
+                if *s == *script {
+                    matches.push(true)
+                } else {
+                    matches.push(false)
+                }
             }
+            let script_ids = self
+                .scripts
+                .iter()
+                .map(|s| tagged_leaf(s))
+                .collect::<Result<Vec<_>>>()?;
+            Ok(PartialMerkleTree::from_script_ids(&script_ids, &matches)?.collected_hashes())
+        };
+
+        if let Err(e) = proof {
+            debug!("Mast genegerate address meet err: {:?}", e);
+            Err(MastError::MastGenProofError)
+        } else {
+            proof
         }
-        let script_ids = self
-            .scripts
-            .iter()
-            .map(|s| tagged_leaf(s))
-            .collect::<Result<Vec<_>>>()?;
-        Ok(PartialMerkleTree::from_script_ids(&script_ids, &matches)?.collected_hashes())
     }
 
     /// generate threshold signature address
     pub fn generate_address(&self, inner_pubkey: &XOnly) -> Result<String> {
-        let root = self.calc_root()?;
-        let program = tweak_pubkey(inner_pubkey, &root)?;
-        try_to_bench32m(&program)
+        let addr = {
+            let root = self.calc_root()?;
+            let program = tweak_pubkey(inner_pubkey, &root)?;
+            try_to_bench32m(&program)
+        };
+
+        if let Err(e) = addr {
+            debug!("Mast genegerate address meet err: {:?}", e);
+            Err(MastError::MastGenAddrError)
+        } else { addr }
     }
 }
 
@@ -269,7 +287,7 @@ mod tests {
         let root = mast.calc_root().unwrap();
         println!("root is {:?}", root);
 
-        let bech32_addr = mast.generate_address(&internal_key);
+        let bech32_addr = mast.generate_address(&internal_key).unwrap();
         println!("bech32 addr is {:?}", bech32_addr);
 
         assert_eq!(

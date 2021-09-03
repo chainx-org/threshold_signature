@@ -105,7 +105,7 @@ impl PartialMerkleTree {
         indexes.clear();
         // An empty set will not work
         if self.num_scripts == 0 {
-            return Err(MastError::InvalidConstructedMast(
+            return Err(MastError::InvalidMast(
                 "No Scripts in MAST".to_owned(),
             ));
         };
@@ -115,13 +115,13 @@ impl PartialMerkleTree {
         // }
         // there can never be more hashes provided than one for every script_id
         if self.hashes.len() as u32 > self.num_scripts {
-            return Err(MastError::InvalidConstructedMast(
+            return Err(MastError::InvalidMast(
                 "Proof contains more hashes than scripts".to_owned(),
             ));
         };
         // there must be at least one bit per node in the partial tree, and at least one node per hash
         if self.bits.len() < self.hashes.len() {
-            return Err(MastError::InvalidConstructedMast(
+            return Err(MastError::InvalidMast(
                 "Proof contains less bits than hashes".to_owned(),
             ));
         };
@@ -136,13 +136,13 @@ impl PartialMerkleTree {
         // Verify that all bits were consumed (except for the padding caused by
         // serializing it as a byte sequence)
         if (bits_used + 7) / 8 != (self.bits.len() as u32 + 7) / 8 {
-            return Err(MastError::InvalidConstructedMast(
+            return Err(MastError::InvalidMast(
                 "Not all bit were consumed".to_owned(),
             ));
         }
         // Verify that all hashes were consumed
         if hash_used != self.hashes.len() as u32 {
-            return Err(MastError::InvalidConstructedMast(
+            return Err(MastError::InvalidMast(
                 "Not all hashes were consumed".to_owned(),
             ));
         }
@@ -238,7 +238,7 @@ impl PartialMerkleTree {
         indexes: &mut Vec<u32>,
     ) -> Result<ScriptMerkleNode> {
         if *bits_used as usize >= self.bits.len() {
-            return Err(MastError::InvalidConstructedMast(
+            return Err(MastError::InvalidMast(
                 "Overflowed the bits array".to_owned(),
             ));
         }
@@ -247,7 +247,7 @@ impl PartialMerkleTree {
         if height == 0 || !parent_of_match {
             // If at height 0, or nothing interesting below, use stored hash and do not descend
             if *hash_used as usize >= self.hashes.len() {
-                return Err(MastError::InvalidConstructedMast(
+                return Err(MastError::InvalidMast(
                     "Overflowed the hash array".to_owned(),
                 ));
             }
@@ -282,7 +282,7 @@ impl PartialMerkleTree {
                 if right == left {
                     // The left and right branches should never be identical, as the script
                     // hashes covered by them must each be unique.
-                    return Err(MastError::InvalidConstructedMast(
+                    return Err(MastError::InvalidMast(
                         "Found identical script hashes".to_owned(),
                     ));
                 }

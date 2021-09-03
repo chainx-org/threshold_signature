@@ -6,9 +6,14 @@ use hex::FromHexError;
 pub enum MastError {
     /// Indicates whether the MAST build error
     MastBuildError,
+    /// Mast generate merkle proof error
+    MastGenProofError,
+    /// Mast generate address error
+    MastGenAddrError,
     /// Invalid constructed mast
     /// Example: When partial merkle tree contains no scripts
-    InvalidConstructedMast(String),
+    InvalidMast(String),
+
     /// Bech32m encoding error
     EncodeToBech32Error(String),
     /// Format error of hex

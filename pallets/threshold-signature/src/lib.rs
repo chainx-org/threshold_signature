@@ -60,21 +60,21 @@ pub mod pallet {
     // Errors inform users that something went wrong.
     #[pallet::error]
     pub enum Error<T> {
-        /// Address not exist
-        AddrNotExist,
-        /// Error format of scripts
-        ScriptFormatError,
-        /// Error from mast generate Merkle proof
-        MastGenMerProofError,
-        /// Error from mast generate address
-        MastGenAddrError,
+        /// No address in storage, generate address first
+        NoAddressInStorage,
+        /// Building Mast error
+        MastBuildError,
         /// The constructed MAST is incorrect.
         /// NOTE: General error, may need to be optimized
-        BadMast,
+        InvalidMast,
+        /// Error from mast generate Merkle proof
+        MastGenProofError,
+        /// Error from mast generate address
+        MastGenAddrError,
+        /// Invalid Encoding,
+        InvalidEncoding,
         /// Signature verification failure
         InvalidSignature,
-        /// XOnly Invalid length
-        XOnlyInvalidLength,
     }
 
     #[pallet::call]
@@ -129,7 +129,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<bool, DispatchError> {
         // make sure the address has its corresponding scripts
         if !AddrToScript::<T>::contains_key(addr.clone()) {
-            return Err(Error::<T>::AddrNotExist.into());
+            return Err(Error::<T>::NoAddressInStorage.into());
         }
 
         let scripts = AddrToScript::<T>::get(&addr);
@@ -178,7 +178,7 @@ impl<T: Config> Pallet<T> {
         // ensure that the final computed public key is the same as
         // the public key of the address in the output
         if addr != Vec::from(output_address) {
-            return Err(Error::<T>::MastGenMerProofError);
+            return Err(Error::<T>::MastGenProofError);
         }
 
         Ok(())
