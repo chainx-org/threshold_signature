@@ -245,37 +245,34 @@ mod tests {
     #[test]
     fn test_bech32m_addr() {
         let internal_key = XOnly::try_from(
-            hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
+            hex::decode("881102cd9cf2ee389137a99a2ad88447b9e8b60c350cda71aff049233574c768")
                 .unwrap(),
         )
         .unwrap();
 
         let script_a = XOnly::try_from(
-            hex::decode("D69C3509BB99E412E68B0FE8544E72837DFA30746D8BE2AA65975F29D22DC7B9")
+            hex::decode("7c9a72882718402bf909b3c1693af60501c7243d79ecc8cf030fa253eb136861")
                 .unwrap(),
         )
         .unwrap();
         let script_b = XOnly::try_from(
-            hex::decode("EEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34")
+            hex::decode("b69af178463918a181a8549d2cfbe77884852ace9d8b299bddf69bedc33f6356")
                 .unwrap(),
         )
         .unwrap();
         let script_c = XOnly::try_from(
-            hex::decode("DFF1D77F2A671C5F36183726DB2341BE58FEAE1DA2DECED843240F7B502BA659")
+            hex::decode("a20c839d955cb10e58c6cbc75812684ad3a1a8f24a503e1c07f5e4944d974d3b")
                 .unwrap(),
         )
         .unwrap();
         let scripts = vec![script_a, script_b, script_c];
         let mast = Mast { scripts };
-        let root = mast.calc_root().unwrap();
-        println!("root is {:?}", root);
 
-        let bech32_addr = mast.generate_address(&internal_key);
-        println!("bech32 addr is {:?}", bech32_addr);
+        let bech32_addr = mast.generate_address(&internal_key).unwrap();
 
         assert_eq!(
-            "4ac28f45b41d96319f16141ec8433362f35cadb1a44a0e40aea424a5ef34d828",
-            root.to_hex()
+            "bc1pqqtqf0hs3507fnhm9e669dux9puzz4r0dt9739ts4nzat2da2pysmvuvvd",
+            bech32_addr
         );
     }
 }

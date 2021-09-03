@@ -9,6 +9,9 @@ extern crate alloc;
 #[cfg(not(feature = "std"))]
 extern crate core2;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
 mod mast;
 #[cfg(test)]
 mod mock;
@@ -16,7 +19,9 @@ pub mod primitive;
 #[cfg(test)]
 mod tests;
 mod types;
+pub mod weights;
 
+use self::weights::WeightInfo;
 use self::{
     mast::{try_to_bench32m, tweak_pubkey, Mast, XOnly},
     primitive::{Addr, Message, Script, Signature},
@@ -38,6 +43,8 @@ pub mod pallet {
     pub trait Config: frame_system::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
@@ -80,7 +87,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Generate threshold signature address according to the script provided by the user.
-        #[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
+        #[pallet::weight(<T as Config>::WeightInfo::generate_address())]
         pub fn generate_address(origin: OriginFor<T>, scripts: Vec<Script>) -> DispatchResult {
             ensure_signed(origin)?;
             let addr = Self::apply_generate_address(scripts)?;
@@ -88,7 +95,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(10_000 + T::DbWeight::get().reads(1))]
+        #[pallet::weight(<T as Config>::WeightInfo::verify_threshold_signature())]
         pub fn verify_threshold_signature(
             origin: OriginFor<T>,
             addr: Addr,
