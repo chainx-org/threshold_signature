@@ -98,7 +98,6 @@ fn verify_signature_with_invalid_signature() {
             hex::decode("7c9a72882718402bf909b3c1693af60501c7243d79ecc8cf030fa253eb136861").unwrap();
 
         let addr = hex::decode("62633170717174716630687333353037666e686d39653636396475783970757a7a3472306474393733397473346e7a6174326461327079736d7675767664").unwrap();
-        
         let signature_ab = vec![1; 64];
         let message = b"We are legion!".to_vec();
         assert_noop!(Pallet::<Test>::verify_threshold_signature(
