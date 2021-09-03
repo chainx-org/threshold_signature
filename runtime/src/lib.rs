@@ -272,6 +272,7 @@ impl pallet_sudo::Config for Runtime {
 /// Configure the pallet-threshold-signature in pallets/threshold-signature.
 impl pallet_threshold_signature::Config for Runtime {
     type Event = Event;
+    type WeightInfo = pallet_threshold_signature::weights::SubstrateWeight<Runtime>;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.

@@ -105,9 +105,7 @@ impl PartialMerkleTree {
         indexes.clear();
         // An empty set will not work
         if self.num_scripts == 0 {
-            return Err(MastError::InvalidMast(
-                "No Scripts in MAST".to_owned(),
-            ));
+            return Err(MastError::InvalidMast("No Scripts in MAST".to_owned()));
         };
         // check for excessively high numbers of scripts
         // if self.num_scripts > MAX_BLOCK_WEIGHT / MIN_TRANSACTION_WEIGHT {
