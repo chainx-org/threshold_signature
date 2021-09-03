@@ -71,7 +71,7 @@ impl Mast {
     /// generate threshold signature address
     pub fn generate_address(&self, inner_pubkey: &XOnly) -> Result<String> {
         let root = self.calc_root()?;
-        let program = tweak_pubkey(&inner_pubkey, &root);
+        let program = tweak_pubkey(inner_pubkey, &root);
         try_to_bench32m(&program)
     }
 }
@@ -160,8 +160,8 @@ pub fn try_to_bench32m(program: &[u8]) -> Result<String> {
 mod tests {
     use super::*;
     use bech32::{u5, ToBase32, Variant};
-    use hashes::hex::ToHex;
     use core::convert::TryFrom;
+    use hashes::hex::ToHex;
 
     #[test]
     fn mast_generate_root_should_work() {
@@ -208,7 +208,7 @@ mod tests {
                 .unwrap(),
         )
         .unwrap();
-        let scripts = vec![script_a.clone(), script_b, script_c];
+        let scripts = vec![script_a, script_b, script_c];
         let mast = Mast { scripts };
         let proof = mast.generate_merkle_proof(&script_a).unwrap();
         println!(

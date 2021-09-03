@@ -20,6 +20,14 @@ version = '3.0.0'
 path = '../runtime'
 version = '3.0.0-monthly-2021-08'
 
+[dependencies.pallet-threshold-signature-rpc]
+path = '../pallets/threshold-signature/rpc'
+version = '3.0.0-monthly-2021-08'
+
+[dependencies.pallet-threshold-signature-rpc-runtime-api]
+path = '../pallets/threshold-signature/rpc/runtime-api'
+version = '3.0.0-monthly-2021-08'
+
 [dependencies]
 jsonrpc-core = '15.1.0'
 structopt = '0.3.8'

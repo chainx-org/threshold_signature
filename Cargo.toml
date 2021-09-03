@@ -2,6 +2,8 @@
 members = [
     'node',
     'pallets/threshold-signature',
+    'pallets/threshold-signature/rpc',
+    'pallets/threshold-signature/rpc/runtime-api',
     'runtime',
 ]
 [profile.release]

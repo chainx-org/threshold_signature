@@ -4,9 +4,18 @@ use super::{
     error::{MastError, Result},
     hash_types::*,
     mast::tagged_branch,
-    *,
 };
 use hashes::Hash;
+
+#[cfg(not(feature = "std"))]
+use alloc::{
+    borrow::ToOwned,
+    fmt, format,
+    prelude::v1::Box,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 
 /// Data structure that represents a partial merkle tree.
 ///

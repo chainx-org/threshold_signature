@@ -41,7 +41,8 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
 /// Import the threshold-signature pallet.
-pub use pallet_threshold_signature;
+pub use pallet_threshold_signature::primitive::{Addr, Message, Script, Signature as TSignature};
+use sp_runtime::DispatchError;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -486,6 +487,16 @@ impl_runtime_apis! {
 
             if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
             Ok((batches, storage_info))
+        }
+    }
+    impl pallet_threshold_signature_rpc_runtime_api::ThresholdSignatureApi<Block> for Runtime {
+        fn verify_threshold_signature(
+            addr: Addr,
+            signature: TSignature,
+            script: Script,
+            message: Message,
+        ) -> Result<bool, DispatchError> {
+            ThresholdSignature::apply_verify_threshold_signature(addr, signature, script, message)
         }
     }
 }

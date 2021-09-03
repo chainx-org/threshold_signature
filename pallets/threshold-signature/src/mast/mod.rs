@@ -10,10 +10,7 @@ pub use hash_types::*;
 pub use mast::*;
 
 #[cfg(feature = "std")]
-use std::{
-    fmt,
-    io,
-};
+use std::{fmt, io};
 
 #[cfg(not(feature = "std"))]
 use core2::io;
@@ -49,11 +46,10 @@ impl TryFrom<Vec<u8>> for XOnly {
     }
 }
 
-impl Deref for XOnly{
+impl Deref for XOnly {
     type Target = [u8; 32];
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
-

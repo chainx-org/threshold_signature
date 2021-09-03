@@ -12,6 +12,11 @@ default-features = false
 path = '../pallets/threshold-signature'
 version = '3.0.0-monthly-2021-08'
 
+[dependencies.pallet-threshold-signature-rpc-runtime-api]
+default-features = false
+path = '../pallets/threshold-signature/rpc/runtime-api'
+version = '3.0.0-monthly-2021-08'
+
 [build-dependencies.substrate-wasm-builder]
 git = 'https://github.com/paritytech/substrate.git'
 tag = 'monthly-2021-08'

@@ -12,7 +12,7 @@ extern crate core2;
 mod mast;
 #[cfg(test)]
 mod mock;
-mod primitive;
+pub mod primitive;
 #[cfg(test)]
 mod tests;
 mod types;
@@ -39,7 +39,6 @@ pub mod pallet {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
     }
-
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(_);
@@ -122,7 +121,7 @@ impl<T: Config> Pallet<T> {
         Ok(Vec::from(addr))
     }
 
-    fn apply_verify_threshold_signature(
+    pub fn apply_verify_threshold_signature(
         addr: Addr,
         signature: Signature,
         full_script: Script,

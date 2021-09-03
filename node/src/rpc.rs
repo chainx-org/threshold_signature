@@ -32,9 +32,11 @@ where
     C: Send + Sync + 'static,
     C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
     C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
+    C::Api: pallet_threshold_signature_rpc_runtime_api::ThresholdSignatureApi<Block>,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + 'static,
 {
+    use pallet_threshold_signature_rpc::{ThresholdSignature, ThresholdSignatureApi};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApi};
     use substrate_frame_rpc_system::{FullSystem, SystemApi};
 
@@ -52,6 +54,10 @@ where
     )));
 
     io.extend_with(TransactionPaymentApi::to_delegate(TransactionPayment::new(
+        client.clone(),
+    )));
+
+    io.extend_with(ThresholdSignatureApi::to_delegate(ThresholdSignature::new(
         client,
     )));
 

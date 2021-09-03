@@ -3743,6 +3743,8 @@ dependencies = [
  "frame-benchmarking-cli",
  "jsonrpc-core",
  "node-threshold-signature-runtime",
+ "pallet-threshold-signature-rpc",
+ "pallet-threshold-signature-rpc-runtime-api",
  "pallet-transaction-payment-rpc",
  "sc-basic-authorship",
  "sc-cli",
@@ -3790,6 +3792,7 @@ dependencies = [
  "pallet-randomness-collective-flip",
  "pallet-sudo",
  "pallet-threshold-signature",
+ "pallet-threshold-signature-rpc-runtime-api",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
@@ -4099,6 +4102,30 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+]
+
+[[package]]
+name = "pallet-threshold-signature-rpc"
+version = "3.0.0-monthly-2021-08"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-threshold-signature-rpc-runtime-api",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-threshold-signature-rpc-runtime-api"
+version = "3.0.0-monthly-2021-08"
+dependencies = [
+ "pallet-threshold-signature",
+ "sp-api",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

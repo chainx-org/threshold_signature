@@ -11,7 +11,7 @@ impl<T: Config> From<MastError> for Error<T> {
             MastError::FromHexError(_) => Error::<T>::BadMast,
             MastError::MastBuildError => Error::<T>::MastGenMerProofError,
             MastError::EncodeToBech32Error(_) => Error::<T>::MastGenAddrError,
-            MastError::XOnlyInvalidLength => Error::<T>::XOnlyInvalidLength
+            MastError::XOnlyInvalidLength => Error::<T>::XOnlyInvalidLength,
         }
     }
 }
