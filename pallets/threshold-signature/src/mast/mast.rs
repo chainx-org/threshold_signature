@@ -45,6 +45,10 @@ impl Mast {
             .collect::<Result<Vec<_>>>()?;
 
         let mut matches = vec![true];
+
+        if self.scripts.len() < 2 {
+            return Err(MastError::MastBuildError);
+        }
         matches.extend(&vec![false; self.scripts.len() - 1]);
         let pmt = PartialMerkleTree::from_script_ids(&script_ids, &matches)?;
         let mut matches_vec: Vec<ScriptId> = vec![];
