@@ -133,7 +133,6 @@ pub fn tweak_pubkey(inner_pubkey: &[u8; 32], root: &ScriptMerkleNode) -> Vec<u8>
     x.extend(inner_pubkey);
     x.extend(&root.to_vec());
     let tweak_key = TapTweakHash::hash(&x);
-    // todo!(tweak_key not right convert to PublicKey)
     let mut bytes = [0u8; 32];
     bytes.copy_from_slice(&tweak_key[..]);
 
