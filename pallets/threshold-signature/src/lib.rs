@@ -162,8 +162,7 @@ impl<T: Config> Pallet<T> {
             exec_script = tagged_branch(exec_script, *i)?;
         }
 
-        let tweaked = try_to_bench32m(&tweak_pubkey(&s[0], &exec_script))?;
-
+        let tweaked = try_to_bench32m(&tweak_pubkey(&s[0], &exec_script)?)?;
         // ensure that the final computed public key is the same as
         // the public key of the address in the output
         if addr != Vec::from(tweaked) {
@@ -181,7 +180,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(), Error<T>> {
         let sig = SchnorrSignature::from_bytes(signature.as_slice())?;
 
-        let agg_pubkey = PublicKey::from_bytes(&script).unwrap();
+        let agg_pubkey = PublicKey::from_bytes(&script)?;
         let ctx = signing_context(b"multi-sig");
 
         if agg_pubkey.verify(ctx.bytes(&message), &sig).is_err() {

@@ -72,7 +72,7 @@ impl Mast {
     /// generate threshold signature address
     pub fn generate_address(&self, inner_pubkey: &XOnly) -> Result<String> {
         let root = self.calc_root()?;
-        let program = tweak_pubkey(inner_pubkey, &root);
+        let program = tweak_pubkey(inner_pubkey, &root)?;
         try_to_bench32m(&program)
     }
 }
@@ -83,7 +83,7 @@ impl Mast {
 pub fn tagged_leaf(script: &XOnly) -> Result<ScriptId> {
     let mut x: Vec<u8> = vec![];
     x.extend(hex::decode("c0")?.iter());
-    let ser_len = serialize(&VarInt(32u64));
+    let ser_len = serialize(&VarInt(32u64))?;
     x.extend(&ser_len);
     x.extend(script.deref());
     Ok(ScriptId::from_hex(&TapLeafHash::hash(&x).to_hex())?)
@@ -127,7 +127,7 @@ fn lexicographical_compare(
 }
 
 /// Compute tweak public key
-pub fn tweak_pubkey(inner_pubkey: &[u8; 32], root: &ScriptMerkleNode) -> Vec<u8> {
+pub fn tweak_pubkey(inner_pubkey: &[u8; 32], root: &ScriptMerkleNode) -> Result<Vec<u8>> {
     // P + hash_tweak(P||root)G
     let mut x: Vec<u8> = vec![];
     x.extend(inner_pubkey);
@@ -142,16 +142,16 @@ pub fn tweak_pubkey(inner_pubkey: &[u8; 32], root: &ScriptMerkleNode) -> Vec<u8>
 
     let mut point = base_point * scalar;
 
-    let inner_pubkey = PublicKey::from_bytes(inner_pubkey).unwrap();
+    let inner_pubkey = PublicKey::from_bytes(inner_pubkey)?;
     point.add_assign(inner_pubkey.as_point());
-    point.compress().as_bytes().to_vec()
+    Ok(point.compress().as_bytes().to_vec())
 }
 
 /// Convert to bench32m encode
 pub fn try_to_bench32m(program: &[u8]) -> Result<String> {
     // May need to add btc testnet prefix or other prefix.
     // https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki#Test_vectors_for_Bech32m
-    let mut data = vec![u5::try_from_u8(1).expect("It will definitely be converted to u5")];
+    let mut data = vec![u5::try_from_u8(1)?];
     data.extend(program.to_base32());
     let addr = bech32::encode("bc", data, Variant::Bech32m)?;
     Ok(addr)

@@ -4,23 +4,24 @@ use hex::FromHexError;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MastError {
-    /// When partial merkle tree contains no scripts
-    NoScripts,
-    /// General format error
-    BadFormat(String),
-    /// Format error of hex
-    FromHexError(String),
     /// Indicates whether the MAST build error
     MastBuildError,
+    /// Invalid constructed mast
+    /// Example: When partial merkle tree contains no scripts
+    InvalidConstructedMast(String),
     /// Bech32m encoding error
     EncodeToBech32Error(String),
-    /// XOnly Invalid length
-    XOnlyInvalidLength,
+    /// Format error of hex
+    FromHexError(String),
+    // Mainly used to handle io errors of encode
+    IoError(String),
+    /// Error which may occur while processing keypairs.
+    KeyPairError(String),
 }
 
 impl From<io::Error> for MastError {
-    fn from(_: io::Error) -> Self {
-        unreachable!()
+    fn from(err: io::Error) -> Self {
+        MastError::IoError(err.to_string())
     }
 }
 
@@ -56,9 +57,9 @@ impl From<FromHexError> for MastError {
             FromHexError::InvalidHexCharacter { c, index } => {
                 MastError::FromHexError(format!("InvalidHexCharacter {}, {}", c, index))
             }
-            FromHexError::OddLength => MastError::FromHexError("OddLength".to_string()),
+            FromHexError::OddLength => MastError::FromHexError("OddLength".to_owned()),
             FromHexError::InvalidStringLength => {
-                MastError::FromHexError("InvalidStringLength".to_string())
+                MastError::FromHexError("InvalidStringLength".to_owned())
             }
         }
     }
@@ -77,6 +78,12 @@ impl From<hashes::hex::Error> for MastError {
                 MastError::FromHexError(format!("InvalidLength {},{}", a, b))
             }
         }
+    }
+}
+
+impl From<schnorrkel::SignatureError> for MastError {
+    fn from(e: schnorrkel::SignatureError) -> Self {
+        MastError::KeyPairError(format!("SignatureError({:?})", e))
     }
 }
 

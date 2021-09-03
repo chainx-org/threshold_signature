@@ -10,7 +10,7 @@ pub use hash_types::*;
 pub use mast::*;
 
 #[cfg(feature = "std")]
-use std::{fmt, io};
+use std::io;
 
 #[cfg(not(feature = "std"))]
 use core2::io;
@@ -41,7 +41,7 @@ impl TryFrom<Vec<u8>> for XOnly {
             x.copy_from_slice(&value);
             Ok(XOnly(x))
         } else {
-            Err(MastError::XOnlyInvalidLength)
+            Err(MastError::KeyPairError("Invalid XOnly Length".to_owned()))
         }
     }
 }

@@ -1,95 +1,11 @@
-#![allow(dead_code)]
-
 use super::*;
-use hashes::hex::ToHex;
-
-#[cfg(feature = "std")]
-use std::error;
-
-/// Encoding error
-#[derive(Debug)]
-pub enum Error {
-    /// And I/O error
-    Io(io::Error),
-    /// Tried to allocate an oversized vector
-    OversizedVectorAllocation {
-        /// The capacity requested
-        requested: usize,
-        /// The maximum capacity
-        max: usize,
-    },
-    /// Checksum was invalid
-    InvalidChecksum {
-        /// The expected checksum
-        expected: [u8; 4],
-        /// The invalid checksum
-        actual: [u8; 4],
-    },
-    /// VarInt was encoded in a non-minimal way
-    NonMinimalVarInt,
-    /// Parsing error
-    ParseFailed(&'static str),
-    /// Unsupported Segwit flag
-    UnsupportedSegwitFlag(u8),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Error::Io(ref e) => write!(f, "I/O error: {}", e),
-            Error::OversizedVectorAllocation {
-                requested: ref r,
-                max: ref m,
-            } => write!(
-                f,
-                "allocation of oversized vector: requested {}, maximum {}",
-                r, m
-            ),
-            Error::InvalidChecksum {
-                expected: ref e,
-                actual: ref a,
-            } => write!(
-                f,
-                "invalid checksum: expected {}, actual {}",
-                e.to_hex(),
-                a.to_hex()
-            ),
-            Error::NonMinimalVarInt => write!(f, "non-minimal varint"),
-            Error::ParseFailed(ref e) => write!(f, "parse failed: {}", e),
-            Error::UnsupportedSegwitFlag(ref swflag) => {
-                write!(f, "unsupported segwit version: {}", swflag)
-            }
-        }
-    }
-}
-
-#[cfg(feature = "std")]
-impl ::std::error::Error for Error {
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match *self {
-            Error::Io(ref e) => Some(e),
-            Error::OversizedVectorAllocation { .. }
-            | Error::InvalidChecksum { .. }
-            | Error::NonMinimalVarInt
-            | Error::ParseFailed(..)
-            | Error::UnsupportedSegwitFlag(..) => None,
-        }
-    }
-}
-
-#[doc(hidden)]
-impl From<io::Error> for Error {
-    fn from(error: io::Error) -> Self {
-        Error::Io(error)
-    }
-}
 
 /// Encode an object into a vector
-pub fn serialize<T: Encodable + ?Sized>(data: &T) -> Vec<u8> {
+pub fn serialize<T: Encodable + ?Sized>(data: &T) -> Result<Vec<u8>, io::Error> {
     let mut encoder = Vec::new();
-    let len = data.consensus_encode(&mut encoder).unwrap();
+    let len = data.consensus_encode(&mut encoder)?;
     debug_assert_eq!(len, encoder.len());
-    encoder
+    Ok(encoder)
 }
 
 macro_rules! define_le_to_array {
@@ -226,6 +142,7 @@ impl VarInt {
     /// Gets the length of this VarInt when encoded.
     /// Returns 1 for 0..=0xFC, 3 for 0xFD..=(2^16-1), 5 for 0x10000..=(2^32-1),
     /// and 9 otherwise.
+    #[allow(dead_code)]
     #[inline]
     pub fn len(&self) -> usize {
         match self.0 {
@@ -264,6 +181,7 @@ impl Encodable for VarInt {
     }
 }
 
+#[allow(dead_code)]
 fn consensus_encode_with_size<S: io::Write>(data: &[u8], mut s: S) -> Result<usize, io::Error> {
     let vi_len = VarInt(data.len() as u64).consensus_encode(&mut s)?;
     s.emit_slice(data)?;
@@ -272,17 +190,19 @@ fn consensus_encode_with_size<S: io::Write>(data: &[u8], mut s: S) -> Result<usi
 
 #[cfg(test)]
 mod tests {
+    use hashes::hex::ToHex;
+
     use super::*;
     #[test]
     fn test_ser_compact_size_tests() {
-        let r1 = serialize(&VarInt(34_u64));
-        let r2 = serialize(&VarInt(253_u64));
-        let r3 = serialize(&VarInt(254_u64));
-        let r4 = serialize(&VarInt(255_u64));
-        let r5 = serialize(&VarInt(55555_u64));
-        let r6 = serialize(&VarInt(666666_u64));
-        let r7 = serialize(&VarInt(999999999_u64));
-        let r8 = serialize(&VarInt(10000000000000_u64));
+        let r1 = serialize(&VarInt(34_u64)).unwrap();
+        let r2 = serialize(&VarInt(253_u64)).unwrap();
+        let r3 = serialize(&VarInt(254_u64)).unwrap();
+        let r4 = serialize(&VarInt(255_u64)).unwrap();
+        let r5 = serialize(&VarInt(55555_u64)).unwrap();
+        let r6 = serialize(&VarInt(666666_u64)).unwrap();
+        let r7 = serialize(&VarInt(999999999_u64)).unwrap();
+        let r8 = serialize(&VarInt(10000000000000_u64)).unwrap();
 
         assert_eq!(r1.to_hex(), "22");
         assert_eq!(r2.to_hex(), "fdfd00");
