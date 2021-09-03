@@ -11,12 +11,13 @@ use super::{
 #[cfg(not(feature = "std"))]
 use alloc::{string::String, vec, vec::Vec};
 use bech32::{self, u5, ToBase32, Variant};
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::scalar::Scalar;
 use hashes::{
     hex::{FromHex, ToHex},
     Hash,
 };
-use schnorrkel::{ExpansionMode, MiniSecretKey, PublicKey};
+use schnorrkel::PublicKey;
 
 use sp_core::sp_std::ops::Deref;
 
@@ -137,11 +138,10 @@ pub fn tweak_pubkey(inner_pubkey: &[u8; 32], root: &ScriptMerkleNode) -> Vec<u8>
     bytes.copy_from_slice(&tweak_key[..]);
 
     let scalar = Scalar::from_bytes_mod_order(bytes);
+    let base_point = RISTRETTO_BASEPOINT_POINT;
 
-    let secret = MiniSecretKey::from_bytes(scalar.as_bytes()).unwrap();
-    let pubkey = secret.expand_to_public(ExpansionMode::Uniform);
+    let mut point = base_point * scalar;
 
-    let mut point = pubkey.into_point();
     let inner_pubkey = PublicKey::from_bytes(inner_pubkey).unwrap();
     point.add_assign(inner_pubkey.as_point());
     point.compress().as_bytes().to_vec()
@@ -153,7 +153,8 @@ pub fn try_to_bench32m(program: &[u8]) -> Result<String> {
     // https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki#Test_vectors_for_Bech32m
     let mut data = vec![u5::try_from_u8(1).expect("It will definitely be converted to u5")];
     data.extend(program.to_base32());
-    Ok(bech32::encode("bc", data, Variant::Bech32m)?)
+    let addr = bech32::encode("bc", data, Variant::Bech32m)?;
+    Ok(addr)
 }
 
 #[cfg(test)]
