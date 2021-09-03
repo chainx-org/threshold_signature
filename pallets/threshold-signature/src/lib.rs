@@ -52,7 +52,7 @@ pub mod pallet {
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Submit scripts to generate address. [addr]
-        GenerateAddress(Addr),
+        GenerateAddress(Vec<u8>),
         /// Verify threshold signature
         VerifySignature,
     }
@@ -81,7 +81,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Generate threshold signature address according to the script provided by the user.
         #[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
-        pub fn generate_address(origin: OriginFor<T>, scripts: Vec<Script>) -> DispatchResult {
+        pub fn generate_address(origin: OriginFor<T>, scripts: Vec<Vec<u8>>) -> DispatchResult {
             ensure_signed(origin)?;
             let addr = Self::apply_generate_address(scripts)?;
             Self::deposit_event(Event::GenerateAddress(addr));
@@ -91,10 +91,10 @@ pub mod pallet {
         #[pallet::weight(10_000 + T::DbWeight::get().reads(1))]
         pub fn verify_threshold_signature(
             origin: OriginFor<T>,
-            addr: Addr,
-            signature: Signature,
-            script: Script,
-            message: Message,
+            addr: Vec<u8>,
+            signature: Vec<u8>,
+            script: Vec<u8>,
+            message: Vec<u8>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
             Self::apply_verify_threshold_signature(addr, signature, script, message)?;

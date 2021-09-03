@@ -28,7 +28,7 @@ pub struct ThresholdSignature<C, P> {
 }
 
 impl<C, P> ThresholdSignature<C, P> {
-    /// Create new `TransactionPayment` with the given reference to the client.
+    /// Create new `ThresholdSignature` with the given reference to the client.
     pub fn new(client: Arc<C>) -> Self {
         Self {
             client,
