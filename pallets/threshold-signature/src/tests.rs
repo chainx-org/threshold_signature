@@ -12,7 +12,7 @@ fn generate_address_should_work() {
         let scripts = vec![abc, ab, ac, bc];
         assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), scripts));
         assert!(AddrToScript::<Test>::contains_key(
-            hex::decode("6263317067367a64793376706436723974777338386e687039703767616e33783232336a766432636b3871726b796a6776763673386e6771706a64327965")
+            hex::decode("62633170717174716630687333353037666e686d39653636396475783970757a7a3472306474393733397473346e7a6174326461327079736d7675767664")
                 .unwrap()));
     });
 }
@@ -29,7 +29,7 @@ fn verify_signature_should_work() {
         let scripts = vec![abc, ab.clone(), ac, bc];
         assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), scripts));
 
-        let addr = hex::decode("6263317067367a64793376706436723974777338386e687039703767616e33783232336a766432636b3871726b796a6776763673386e6771706a64327965").unwrap();
+        let addr = hex::decode("62633170717174716630687333353037666e686d39653636396475783970757a7a3472306474393733397473346e7a6174326461327079736d7675767664").unwrap();
         let signature_ab = hex::decode("7227f84f853853527488ba5b9939c56dd4ecd0ae96687e0d8d4d5da10cb4e6651cb2aca89236f3c3766d80e3b2ab37c74abb91ad6bb66677a0f1e3bd7e68118f").unwrap();
         let message = b"We are legion!".to_vec();
         assert_ok!(Pallet::<Test>::verify_threshold_signature(Origin::signed(who), addr, signature_ab, ab, message));
