@@ -27,7 +27,11 @@ use self::{
     primitive::{Addr, Message, Script, Signature},
 };
 use codec::{Decode, Encode};
-use frame_support::{dispatch::DispatchError, inherent::Vec};
+use frame_support::{
+    dispatch::{DispatchError, DispatchResultWithPostInfo, PostDispatchInfo},
+    inherent::Vec,
+    weights::Weight,
+};
 use mast::{tagged_branch, ScriptMerkleNode};
 pub use pallet::*;
 use schnorrkel::{signing_context, PublicKey, Signature as SchnorrSignature};
@@ -50,12 +54,13 @@ pub mod pallet {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// A dispatchable call.
         type Call: Parameter
-            + Dispatchable<Origin = Self::Origin>
+            + Dispatchable<Origin = Self::Origin, PostInfo = PostDispatchInfo>
             + GetDispatchInfo
             + From<frame_system::Call<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
+
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(_);
@@ -98,7 +103,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Generate threshold signature address according to the script provided by the user.
-        #[pallet::weight(<T as Config>::WeightInfo::generate_address())]
+        #[pallet::weight(< T as Config >::WeightInfo::generate_address())]
         pub fn generate_address(origin: OriginFor<T>, scripts: Vec<Vec<u8>>) -> DispatchResult {
             ensure_signed(origin)?;
             let addr = Self::apply_generate_address(scripts)?;
@@ -106,21 +111,30 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(<T as Config>::WeightInfo::verify_threshold_signature())]
+        #[pallet::weight(< T as Config >::WeightInfo::verify_threshold_signature())]
         pub fn verify_threshold_signature(
             origin: OriginFor<T>,
             addr: T::AccountId,
             signature: Vec<u8>,
             script: Vec<u8>,
             message: Vec<u8>,
-            call: Box<<T as Config>::Call>,
-        ) -> DispatchResult {
+            call: Option<Vec<u8>>,
+        ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            Self::apply_verify_threshold_signature(addr, signature, script, message)?;
-            Self::deposit_event(Event::VerifySignature);
-            // TODO: Processing call results
-            let _ = call.dispatch(RawOrigin::Signed(who).into());
-            Ok(())
+            let _ = Self::apply_verify_threshold_signature(addr, signature, script, message)?;
+            if let Some(call) = call {
+                let call: <T as Config>::Call = Decode::decode(&mut &call[..]).unwrap();
+                let result = call.dispatch(RawOrigin::Signed(who).into());
+                Self::deposit_event(Event::VerifySignature);
+                Ok(get_result_weight(result)
+                    .map(|actual_weight| {
+                        T::WeightInfo::verify_threshold_signature().saturating_add(actual_weight)
+                    })
+                    .into())
+            } else {
+                Self::deposit_event(Event::VerifySignature);
+                Ok(Some(T::WeightInfo::verify_threshold_signature()).into())
+            }
         }
     }
 }
@@ -222,5 +236,15 @@ impl<T: Config> Pallet<T> {
         }
 
         Ok(())
+    }
+}
+
+/// Return the weight of a dispatch call result as an `Option`.
+///
+/// Will return the weight regardless of what the state of the result is.
+fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
+    match result {
+        Ok(post_info) => post_info.actual_weight,
+        Err(err) => err.post_info.actual_weight,
     }
 }

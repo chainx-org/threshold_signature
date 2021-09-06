@@ -4091,6 +4091,7 @@ dependencies = [
  "hex",
  "libsecp256k1 0.6.0",
  "log",
+ "pallet-balances",
  "parity-scale-codec",
  "rand 0.8.4",
  "rand_core 0.6.3",

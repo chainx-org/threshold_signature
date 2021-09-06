@@ -18,6 +18,7 @@ frame_support::construct_runtime!(
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         ThresholdSignature: pallet_threshold_signature::{Pallet, Call, Storage, Event<T>},
     }
 );
@@ -45,14 +46,27 @@ impl system::Config for Test {
     type BlockHashCount = BlockHashCount;
     type Version = ();
     type PalletInfo = PalletInfo;
-    type AccountData = ();
+    type AccountData = pallet_balances::AccountData<u64>;
     type OnNewAccount = ();
     type OnKilledAccount = ();
     type SystemWeightInfo = ();
     type SS58Prefix = SS58Prefix;
     type OnSetCode = ();
 }
-
+parameter_types! {
+    pub const ExistentialDeposit: u64 = 1;
+}
+impl pallet_balances::Config for Test {
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = [u8; 8];
+    type Balance = u64;
+    type Event = Event;
+    type DustRemoval = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type AccountStore = System;
+    type WeightInfo = ();
+}
 impl pallet_threshold_signature::Config for Test {
     type Event = Event;
     type Call = Call;
@@ -61,8 +75,18 @@ impl pallet_threshold_signature::Config for Test {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    system::GenesisConfig::default()
+    let mut t = system::GenesisConfig::default()
         .build_storage::<Test>()
         .unwrap()
-        .into()
+        .into();
+    pallet_balances::GenesisConfig::<Test> {
+        balances: vec![(1, 10), (2, 20), (3, 30), (4, 40)],
+    }
+    .assimilate_storage(&mut t)
+    .unwrap();
+    let mut ext = sp_io::TestExternalities::new(t);
+    ext.execute_with(|| System::set_block_number(1));
+    ext
 }
+
+pub use pallet_balances::Call as BalancesCall;

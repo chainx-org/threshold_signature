@@ -37,6 +37,9 @@ bitcoin_hashes = { version = "0.10.0", default-features = false, features = ["al
 schnorrkel = { version = "0.10.1", default-features = false, features = ["u64_backend"] }
 curve25519-dalek = { package = "curve25519-dalek-ng", version = "4.0", default-features = false }
 
+[dev-dependencies]
+pallet-balances = { version = '4.0.0-dev', git = 'https://github.com/paritytech/substrate.git', tag = 'monthly-2021-08', default-features = false }
+
 [features]
 default = ['std', 'getrandom']
 runtime-benchmarks = ['frame-benchmarking']
@@ -47,6 +50,7 @@ std = [
     'frame-support/std',
     'frame-system/std',
     'frame-benchmarking/std',
+    "pallet-balances/std",
     "bitcoin_hashes/std",
     "hex/std",
     "schnorrkel/std",
