@@ -272,6 +272,7 @@ impl pallet_sudo::Config for Runtime {
 /// Configure the pallet-threshold-signature in pallets/threshold-signature.
 impl pallet_threshold_signature::Config for Runtime {
     type Event = Event;
+    type Call = Call;
     type WeightInfo = pallet_threshold_signature::weights::SubstrateWeight<Runtime>;
 }
 

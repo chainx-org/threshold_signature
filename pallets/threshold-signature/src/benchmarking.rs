@@ -7,6 +7,7 @@ use crate::Pallet;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, vec, whitelisted_caller};
 use frame_system::RawOrigin;
 
+// FIXME
 benchmarks! {
     generate_address {
         let caller: T::AccountId = whitelisted_caller();

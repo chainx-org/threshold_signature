@@ -40,6 +40,7 @@ fn generate_address_wrong_scripts() {
     });
 }
 
+/// TODO: Fix tests
 #[test]
 fn verify_signature_should_work() {
     new_test_ext().execute_with(|| {

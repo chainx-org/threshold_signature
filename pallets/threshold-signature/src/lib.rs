@@ -31,18 +31,27 @@ use mast::{tagged_branch, ScriptMerkleNode};
 pub use pallet::*;
 use schnorrkel::{signing_context, PublicKey, Signature as SchnorrSignature};
 use sp_core::sp_std::convert::TryFrom;
+use sp_std::prelude::*;
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
-    use frame_system::pallet_prelude::*;
+    use frame_support::{
+        dispatch::{DispatchResult, Dispatchable, GetDispatchInfo},
+        pallet_prelude::*,
+    };
+    use frame_system::{pallet_prelude::*, RawOrigin};
 
     /// Configure the pallet by specifying the parameters and types on which it depends.
     #[pallet::config]
     pub trait Config: frame_system::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        /// A dispatchable call.
+        type Call: Parameter
+            + Dispatchable<Origin = Self::Origin>
+            + GetDispatchInfo
+            + From<frame_system::Call<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -102,10 +111,13 @@ pub mod pallet {
             signature: Vec<u8>,
             script: Vec<u8>,
             message: Vec<u8>,
+            call: Box<<T as Config>::Call>,
         ) -> DispatchResult {
-            ensure_signed(origin)?;
+            let who = ensure_signed(origin)?;
             Self::apply_verify_threshold_signature(addr, signature, script, message)?;
             Self::deposit_event(Event::VerifySignature);
+            // TODO: Processing call results
+            let _ = call.dispatch(RawOrigin::Signed(who).into());
             Ok(())
         }
     }
