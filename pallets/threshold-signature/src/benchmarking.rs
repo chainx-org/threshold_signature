@@ -34,7 +34,8 @@ benchmarks! {
         let addr = <T as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
         let signature_ab = hex::decode("7227f84f853853527488ba5b9939c56dd4ecd0ae96687e0d8d4d5da10cb4e6651cb2aca89236f3c3766d80e3b2ab37c74abb91ad6bb66677a0f1e3bd7e68118f").unwrap();
         let message = b"We are legion!".to_vec();
-    }: _(RawOrigin::Signed(caller), addr, signature_ab, ab, message, None)
+        let call: <T as Config>::Call = frame_system::Call::<T>::remark(vec![0; 1 as usize]).into();
+    }: _(RawOrigin::Signed(caller), addr, signature_ab, ab, message, Box::new(call))
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

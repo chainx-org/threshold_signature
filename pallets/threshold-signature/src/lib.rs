@@ -30,7 +30,6 @@ use codec::Decode;
 use frame_support::{
     dispatch::{DispatchError, DispatchResultWithPostInfo, PostDispatchInfo},
     inherent::Vec,
-    weights::Weight,
 };
 use mast::{tagged_branch, ScriptMerkleNode};
 pub use pallet::*;
@@ -118,23 +117,19 @@ pub mod pallet {
             signature: Vec<u8>,
             script: Vec<u8>,
             message: Vec<u8>,
-            call: Option<Vec<u8>>,
+            call: Box<<T as Config>::Call>,
         ) -> DispatchResultWithPostInfo {
-            let who = ensure_signed(origin)?;
-            let _ = Self::apply_verify_threshold_signature(addr, signature, script, message)?;
-            if let Some(call) = call {
-                let call: <T as Config>::Call = Decode::decode(&mut &call[..]).unwrap();
-                let result = call.dispatch(RawOrigin::Signed(who).into());
+            ensure_signed(origin)?;
+            let executable =
+                Self::apply_verify_threshold_signature(addr.clone(), signature, script, message)?;
+
+            if executable {
+                // TODO: result handle
+                let _ = call.dispatch(RawOrigin::Signed(addr).into());
                 Self::deposit_event(Event::VerifySignature);
-                Ok(get_result_weight(result)
-                    .map(|actual_weight| {
-                        T::WeightInfo::verify_threshold_signature().saturating_add(actual_weight)
-                    })
-                    .into())
-            } else {
-                Self::deposit_event(Event::VerifySignature);
-                Ok(Some(T::WeightInfo::verify_threshold_signature()).into())
             }
+
+            Ok(Some(T::WeightInfo::verify_threshold_signature()).into())
         }
     }
 }
@@ -236,15 +231,5 @@ impl<T: Config> Pallet<T> {
         }
 
         Ok(())
-    }
-}
-
-/// Return the weight of a dispatch call result as an `Option`.
-///
-/// Will return the weight regardless of what the state of the result is.
-fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
-    match result {
-        Ok(post_info) => post_info.actual_weight,
-        Err(err) => err.post_info.actual_weight,
     }
 }
