@@ -80,7 +80,13 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .unwrap()
         .into();
     pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(1, 10), (2, 20), (3, 30), (4, 40)],
+        balances: vec![
+            (1, 10),
+            (2, 20),
+            (3, 30),
+            (4, 40),
+            (16438013230045206016, 50),
+        ],
     }
     .assimilate_storage(&mut t)
     .unwrap();

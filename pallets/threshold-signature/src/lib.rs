@@ -102,6 +102,10 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Generate threshold signature address according to the script provided by the user.
+        ///
+        /// - `scripts`: The first parameter is inner pubkey. The remaining parameters are other
+        /// scripts. For example, inner pubkey can be the aggregate public
+        /// key of ABC, and other scripts can be the aggregate public key of AB, BC and AC.
         #[pallet::weight(< T as Config >::WeightInfo::generate_address())]
         pub fn generate_address(origin: OriginFor<T>, scripts: Vec<Vec<u8>>) -> DispatchResult {
             ensure_signed(origin)?;
@@ -110,6 +114,16 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Verify the multi-signature address and then call other transactions.
+        ///
+        /// - `addr`: Represents a multi-signature address. Represents a multi-signature address.
+        /// For example, the aggregate public key of ABC
+        /// - `signature`: Usually represents the aggregate signature of m individuals. For example,
+        /// the aggregate signature of AB
+        /// - `script`: Usually represents the aggregate public key of m individuals. For example,
+        /// the aggregate public key of AB
+        /// - `message`: Message used in the signing process.
+        /// - `call`: The call to be executed.
         #[pallet::weight(< T as Config >::WeightInfo::verify_threshold_signature())]
         pub fn verify_threshold_signature(
             origin: OriginFor<T>,
@@ -120,16 +134,16 @@ pub mod pallet {
             call: Box<<T as Config>::Call>,
         ) -> DispatchResultWithPostInfo {
             ensure_signed(origin)?;
+
             let executable =
                 Self::apply_verify_threshold_signature(addr.clone(), signature, script, message)?;
 
             if executable {
-                // TODO: result handle
-                let _ = call.dispatch(RawOrigin::Signed(addr).into());
-                Self::deposit_event(Event::VerifySignature);
+                let result = call.dispatch(RawOrigin::Signed(addr).into());
+                Self::compute_result_weight(result)
+            } else {
+                Ok(Some(T::WeightInfo::verify_threshold_signature()).into())
             }
-
-            Ok(Some(T::WeightInfo::verify_threshold_signature()).into())
         }
     }
 }
@@ -231,5 +245,24 @@ impl<T: Config> Pallet<T> {
         }
 
         Ok(())
+    }
+
+    /// Return the weight of a dispatch call result as an `Option`.
+    ///
+    /// Will return the weight regardless of what the state of the result is.
+    fn compute_result_weight(mut result: DispatchResultWithPostInfo) -> DispatchResultWithPostInfo {
+        match &mut result {
+            Ok(post_info) => {
+                post_info.actual_weight = post_info.actual_weight.map(|actual_weight| {
+                    T::WeightInfo::verify_threshold_signature().saturating_add(actual_weight)
+                })
+            }
+            Err(err) => {
+                err.post_info.actual_weight = err.post_info.actual_weight.map(|actual_weight| {
+                    T::WeightInfo::verify_threshold_signature().saturating_add(actual_weight)
+                })
+            }
+        };
+        result
     }
 }
