@@ -493,7 +493,7 @@ impl_runtime_apis! {
     }
     impl pallet_threshold_signature_rpc_runtime_api::ThresholdSignatureApi<Block> for Runtime {
         fn verify_threshold_signature(
-            addr: Addr,
+            addr: AccountId,
             signature: TSignature,
             script: Script,
             message: Message,

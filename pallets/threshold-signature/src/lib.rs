@@ -26,6 +26,7 @@ use self::{
     mast::{try_to_bench32m, tweak_pubkey, Mast, XOnly},
     primitive::{Addr, Message, Script, Signature},
 };
+use codec::{Decode, Encode};
 use frame_support::{dispatch::DispatchError, inherent::Vec};
 use mast::{tagged_branch, ScriptMerkleNode};
 pub use pallet::*;
@@ -61,14 +62,15 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn addr_to_script)]
-    pub type AddrToScript<T: Config> = StorageMap<_, Twox64Concat, Addr, Vec<Script>, ValueQuery>;
+    pub type AddrToScript<T: Config> =
+        StorageMap<_, Twox64Concat, T::AccountId, Vec<Script>, ValueQuery>;
 
     #[pallet::event]
     #[pallet::metadata(T::AccountId = "AccountId")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
         /// Submit scripts to generate address. [addr]
-        GenerateAddress(Vec<u8>),
+        GenerateAddress(T::AccountId),
         /// Verify threshold signature
         VerifySignature,
     }
@@ -107,7 +109,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::verify_threshold_signature())]
         pub fn verify_threshold_signature(
             origin: OriginFor<T>,
-            addr: Vec<u8>,
+            addr: T::AccountId,
             signature: Vec<u8>,
             script: Vec<u8>,
             message: Vec<u8>,
@@ -124,7 +126,7 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    fn apply_generate_address(scripts: Vec<Script>) -> Result<Addr, DispatchError> {
+    fn apply_generate_address(scripts: Vec<Script>) -> Result<T::AccountId, DispatchError> {
         let script_nodes = scripts
             .iter()
             .map(|script| XOnly::try_from(script.clone()))
@@ -136,12 +138,13 @@ impl<T: Config> Pallet<T> {
             .generate_address(&script_nodes[0])
             .map_err::<Error<T>, _>(Into::into)?;
 
-        AddrToScript::<T>::insert(Vec::from(addr.clone()), scripts);
-        Ok(Vec::from(addr))
+        let account = T::AccountId::decode(&mut &addr[..]).unwrap_or_default();
+        AddrToScript::<T>::insert(account.clone(), scripts);
+        Ok(account)
     }
 
     pub fn apply_verify_threshold_signature(
-        addr: Addr,
+        addr: T::AccountId,
         signature: Signature,
         full_script: Script,
         message: Message,
@@ -169,7 +172,7 @@ impl<T: Config> Pallet<T> {
             .generate_merkle_proof(&exec_script)
             .map_err::<Error<T>, _>(Into::into)?;
 
-        Self::verify_proof(addr, &proof, script_nodes)?;
+        Self::verify_proof(addr.encode(), &proof, script_nodes)?;
         Self::verify_signature(signature, full_script, message)?;
 
         Ok(true)

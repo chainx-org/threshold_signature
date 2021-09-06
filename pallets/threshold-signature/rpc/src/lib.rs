@@ -5,6 +5,7 @@ pub use pallet_threshold_signature_rpc_runtime_api::{
 };
 use sp_api::{BlockId, BlockT, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
+use sp_runtime::AccountId32;
 use sp_std::{marker::PhantomData, sync::Arc};
 
 #[rpc]
@@ -13,7 +14,7 @@ pub trait ThresholdSignatureApi<BlockHash> {
     #[rpc(name = "threshold_signature_verify")]
     fn verify_threshold_signature(
         &self,
-        addr: Addr,
+        addr: AccountId32,
         signature: Signature,
         script: Script,
         message: Message,
@@ -45,7 +46,7 @@ where
 {
     fn verify_threshold_signature(
         &self,
-        addr: Addr,
+        addr: AccountId32,
         signature: Signature,
         script: Script,
         message: Message,

@@ -85,19 +85,19 @@ impl Mast {
     }
 
     /// generate threshold signature address
-    pub fn generate_address(&self, inner_pubkey: &XOnly) -> Result<String> {
-        let addr = {
-            let root = self.calc_root()?;
-            let program = tweak_pubkey(inner_pubkey, &root)?;
-            try_to_bench32m(&program)
-        };
+    pub fn generate_address(&self, inner_pubkey: &XOnly) -> Result<Vec<u8>> {
+        // let addr = {
+        let root = self.calc_root()?;
+        tweak_pubkey(inner_pubkey, &root)
+        // try_to_bench32m(&program)
+        // };
 
-        if let Err(e) = addr {
-            debug!("Mast genegerate address meet err: {:?}", e);
-            Err(MastError::MastGenAddrError)
-        } else {
-            addr
-        }
+        // if let Err(e) = addr {
+        //     debug!("Mast genegerate address meet err: {:?}", e);
+        //     Err(MastError::MastGenAddrError)
+        // } else {
+        //     addr
+        // }
     }
 }
 
