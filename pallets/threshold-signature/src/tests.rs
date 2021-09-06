@@ -1,5 +1,5 @@
-use crate::{mock::*, AddrToScript, Error, Pallet};
-use codec::Encode;
+use crate::{mock::{*, self}, AddrToScript, Error, Pallet};
+use codec::{Encode, Decode};
 use frame_support::{assert_noop, assert_ok};
 
 #[test]
@@ -12,9 +12,9 @@ fn generate_address_should_work() {
         let bc = hex::decode("a20c839d955cb10e58c6cbc75812684ad3a1a8f24a503e1c07f5e4944d974d3b").unwrap();
         let scripts = vec![abc, ab, ac, bc];
         assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), scripts));
-        assert!(AddrToScript::<Test>::contains_key(
-            hex::decode("62633170717174716630687333353037666e686d39653636396475783970757a7a3472306474393733397473346e7a6174326461327079736d7675767664")
-                .unwrap()));
+        let tweaked = &hex::decode("001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049").unwrap();
+        let addr = <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
+        assert!(AddrToScript::<Test>::contains_key(addr));
     });
 }
 
@@ -41,7 +41,6 @@ fn generate_address_wrong_scripts() {
     });
 }
 
-/// TODO: Fix tests
 #[test]
 fn verify_signature_should_work() {
     new_test_ext().execute_with(|| {
@@ -54,7 +53,8 @@ fn verify_signature_should_work() {
         let scripts = vec![abc, ab.clone(), ac, bc];
         assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), scripts));
 
-        let addr = hex::decode("62633170717174716630687333353037666e686d39653636396475783970757a7a3472306474393733397473346e7a6174326461327079736d7675767664").unwrap();
+        let tweaked = &hex::decode("001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049").unwrap();
+        let addr = <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
         let signature_ab = hex::decode("7227f84f853853527488ba5b9939c56dd4ecd0ae96687e0d8d4d5da10cb4e6651cb2aca89236f3c3766d80e3b2ab37c74abb91ad6bb66677a0f1e3bd7e68118f").unwrap();
         let message = b"We are legion!".to_vec();
         assert_eq!("576520617265206c6567696f6e21", hex::encode(&message));
@@ -72,7 +72,8 @@ fn verify_signature_no_address() {
         let ab =
             hex::decode("7c9a72882718402bf909b3c1693af60501c7243d79ecc8cf030fa253eb136861").unwrap();
 
-        let addr = hex::decode("62633170717174716630687333353037666e686d39653636396475783970757a7a3472306474393733397473346e7a6174326461327079736d7675767664").unwrap();
+        let tweaked = &hex::decode("001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049").unwrap();
+        let addr = <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
         let signature_ab = hex::decode("7227f84f853853527488ba5b9939c56dd4ecd0ae96687e0d8d4d5da10cb4e6651cb2aca89236f3c3766d80e3b2ab37c74abb91ad6bb66677a0f1e3bd7e68118f").unwrap();
         let message = b"We are legion!".to_vec();
         let call = Call::Balances(BalancesCall::transfer(1, 2));
@@ -104,7 +105,8 @@ fn verify_signature_with_invalid_signature() {
         let ab =
             hex::decode("7c9a72882718402bf909b3c1693af60501c7243d79ecc8cf030fa253eb136861").unwrap();
 
-        let addr = hex::decode("62633170717174716630687333353037666e686d39653636396475783970757a7a3472306474393733397473346e7a6174326461327079736d7675767664").unwrap();
+        let tweaked = &hex::decode("001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049").unwrap();
+        let addr = <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
         let signature_ab = vec![1; 64];
         let message = b"We are legion!".to_vec();
         let call = Call::Balances(BalancesCall::transfer(1, 2));

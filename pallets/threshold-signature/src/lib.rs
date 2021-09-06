@@ -23,10 +23,10 @@ pub mod weights;
 
 use self::weights::WeightInfo;
 use self::{
-    mast::{try_to_bench32m, tweak_pubkey, Mast, XOnly},
-    primitive::{Addr, Message, Script, Signature},
+    mast::{tweak_pubkey, Mast, XOnly},
+    primitive::{Message, Script, Signature},
 };
-use codec::{Decode, Encode};
+use codec::Decode;
 use frame_support::{
     dispatch::{DispatchError, DispatchResultWithPostInfo, PostDispatchInfo},
     inherent::Vec,
@@ -149,7 +149,7 @@ impl<T: Config> Pallet<T> {
 
         let mast = Mast::new(Vec::from(&script_nodes[1..]));
         let addr = mast
-            .generate_address(&script_nodes[0])
+            .generate_tweak_pubkey(&script_nodes[0])
             .map_err::<Error<T>, _>(Into::into)?;
 
         let account = T::AccountId::decode(&mut &addr[..]).unwrap_or_default();
@@ -186,7 +186,7 @@ impl<T: Config> Pallet<T> {
             .generate_merkle_proof(&exec_script)
             .map_err::<Error<T>, _>(Into::into)?;
 
-        Self::verify_proof(addr.encode(), &proof, script_nodes)?;
+        Self::verify_proof(addr, &proof, script_nodes)?;
         Self::verify_signature(signature, full_script, message)?;
 
         Ok(true)
@@ -196,7 +196,7 @@ impl<T: Config> Pallet<T> {
     ///
     /// if the proof contains an executing script, the merkel root is calculated from here
     fn verify_proof(
-        addr: Addr,
+        addr: T::AccountId,
         proof: &[ScriptMerkleNode],
         scripts: Vec<XOnly>,
     ) -> Result<(), Error<T>> {
@@ -209,11 +209,11 @@ impl<T: Config> Pallet<T> {
         let merkel_root = exec_script_node;
         // calculate the output address using the internal public key and the script root
         let tweaked = &tweak_pubkey(&scripts[0], &merkel_root)?;
-        let output_address = try_to_bench32m(tweaked)?;
+        let output_address = T::AccountId::decode(&mut &tweaked[..]).unwrap_or_default();
 
         // ensure that the final computed public key is the same as
         // the public key of the address in the output
-        if addr != Vec::from(output_address) {
+        if addr != output_address {
             return Err(Error::<T>::MastGenProofError);
         }
 

@@ -3,9 +3,6 @@
 
 use frame_support::inherent::Vec;
 
-/// bech32m address
-pub type Addr = Vec<u8>;
-
 /// Script used to represent the public key
 pub type Script = Vec<u8>;
 

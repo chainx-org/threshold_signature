@@ -7,7 +7,6 @@ use crate::Pallet;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, vec, whitelisted_caller};
 use frame_system::RawOrigin;
 
-// FIXME
 benchmarks! {
     generate_address {
         let caller: T::AccountId = whitelisted_caller();
@@ -18,9 +17,9 @@ benchmarks! {
         let scripts = vec![abc, ab, ac, bc];
     }: _(RawOrigin::Signed(caller), scripts)
     verify {
-        assert!(AddrToScript::<T>::contains_key(
-            hex::decode("62633170717174716630687333353037666e686d39653636396475783970757a7a3472306474393733397473346e7a6174326461327079736d7675767664")
-                .unwrap()));
+        let tweaked = &hex::decode("001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049").unwrap();
+        let addr = <T as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
+        assert!(AddrToScript::<T>::contains_key(addr));
     }
 
     verify_threshold_signature {
@@ -31,10 +30,11 @@ benchmarks! {
         let bc = hex::decode("a20c839d955cb10e58c6cbc75812684ad3a1a8f24a503e1c07f5e4944d974d3b").unwrap();
         let scripts = vec![abc, ab.clone(), ac, bc];
         let _ = Pallet::<T>::apply_generate_address(scripts);
-        let addr = hex::decode("62633170717174716630687333353037666e686d39653636396475783970757a7a3472306474393733397473346e7a6174326461327079736d7675767664").unwrap();
+        let tweaked = &hex::decode("001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049").unwrap();
+        let addr = <T as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
         let signature_ab = hex::decode("7227f84f853853527488ba5b9939c56dd4ecd0ae96687e0d8d4d5da10cb4e6651cb2aca89236f3c3766d80e3b2ab37c74abb91ad6bb66677a0f1e3bd7e68118f").unwrap();
         let message = b"We are legion!".to_vec();
-    }: _(RawOrigin::Signed(caller), addr, signature_ab, ab, message)
+    }: _(RawOrigin::Signed(caller), addr, signature_ab, ab, message, None)
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

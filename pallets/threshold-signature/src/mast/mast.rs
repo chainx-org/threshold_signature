@@ -11,7 +11,6 @@ use super::{
 };
 #[cfg(not(feature = "std"))]
 use alloc::{string::String, vec, vec::Vec};
-use bech32::{self, u5, ToBase32, Variant};
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::scalar::Scalar;
 use frame_support::sp_tracing::debug;
@@ -85,19 +84,10 @@ impl Mast {
     }
 
     /// generate threshold signature address
-    pub fn generate_address(&self, inner_pubkey: &XOnly) -> Result<Vec<u8>> {
+    pub fn generate_tweak_pubkey(&self, inner_pubkey: &XOnly) -> Result<Vec<u8>> {
         // let addr = {
         let root = self.calc_root()?;
         tweak_pubkey(inner_pubkey, &root)
-        // try_to_bench32m(&program)
-        // };
-
-        // if let Err(e) = addr {
-        //     debug!("Mast genegerate address meet err: {:?}", e);
-        //     Err(MastError::MastGenAddrError)
-        // } else {
-        //     addr
-        // }
     }
 }
 
@@ -170,22 +160,10 @@ pub fn tweak_pubkey(inner_pubkey: &[u8; 32], root: &ScriptMerkleNode) -> Result<
     Ok(point.compress().as_bytes().to_vec())
 }
 
-/// Convert to bench32m encode
-pub fn try_to_bench32m(program: &[u8]) -> Result<String> {
-    // May need to add btc testnet prefix or other prefix.
-    // https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki#Test_vectors_for_Bech32m
-    let mut data = vec![u5::try_from_u8(1)?];
-    data.extend(program.to_base32());
-    let addr = bech32::encode("bc", data, Variant::Bech32m)?;
-    Ok(addr)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bech32::{u5, ToBase32, Variant};
     use core::convert::TryFrom;
-    use codec::Encode;
     use hashes::hex::ToHex;
 
     #[test]
@@ -247,21 +225,6 @@ mod tests {
     }
 
     #[test]
-    fn mast_generate_address_should_work() {
-        let mut data = vec![u5::try_from_u8(1).unwrap()];
-        data.extend(
-            hex::decode("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
-                .unwrap()
-                .to_base32(),
-        );
-        let address = bech32::encode("bc", data, Variant::Bech32m).unwrap();
-        assert_eq!(
-            "bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0",
-            address
-        )
-    }
-
-    #[test]
     fn test_bech32m_addr() {
         let internal_key = XOnly::try_from(
             hex::decode("881102cd9cf2ee389137a99a2ad88447b9e8b60c350cda71aff049233574c768")
@@ -287,11 +250,10 @@ mod tests {
         let scripts = vec![script_a, script_b, script_c];
         let mast = Mast { scripts };
 
-        let addr = mast.generate_address(&internal_key).unwrap();
-        println!("{:?}", addr.encode());
-        // assert_eq!(
-        //     "bc1pqqtqf0hs3507fnhm9e669dux9puzz4r0dt9739ts4nzat2da2pysmvuvvd",
-        //     bech32_addr
-        // );
+        let addr = mast.generate_tweak_pubkey(&internal_key).unwrap();
+        assert_eq!(
+            "001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049",
+            hex::encode(addr)
+        );
     }
 }

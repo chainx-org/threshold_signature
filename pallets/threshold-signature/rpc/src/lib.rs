@@ -1,7 +1,7 @@
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 pub use pallet_threshold_signature_rpc_runtime_api::{
-    Addr, Message, Script, Signature, ThresholdSignatureApi as ThresholdSignatureRuntimeApi,
+    Message, Script, Signature, ThresholdSignatureApi as ThresholdSignatureRuntimeApi,
 };
 use sp_api::{BlockId, BlockT, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;

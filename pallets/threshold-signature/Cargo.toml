@@ -20,7 +20,6 @@ frame-benchmarking = { version = '4.0.0-dev', git = 'https://github.com/parityte
 
 libsecp256k1 = { version = "0.6", default-features = false, features = ["hmac", "static-context"] }
 arrayref = { version = "0.3.6" }
-bech32 = { version = "0.8.1", default-features = false }
 core2 = { version = "0.3.0", default-features = false, features = ["alloc"] }
 digest = { version = "0.9.0", default-features = false }
 sha2 = { version = "0.9.5", default-features = false }

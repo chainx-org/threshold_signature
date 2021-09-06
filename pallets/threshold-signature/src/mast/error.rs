@@ -30,32 +30,6 @@ impl From<io::Error> for MastError {
     }
 }
 
-impl From<bech32::Error> for MastError {
-    fn from(e: bech32::Error) -> Self {
-        match e {
-            bech32::Error::MissingSeparator => {
-                MastError::EncodeToBech32Error("MissingSeparator".to_string())
-            }
-            bech32::Error::InvalidChecksum => {
-                MastError::EncodeToBech32Error("InvalidChecksum".to_string())
-            }
-            bech32::Error::InvalidLength => {
-                MastError::EncodeToBech32Error("InvalidLength".to_string())
-            }
-            bech32::Error::InvalidChar(c) => {
-                MastError::EncodeToBech32Error(format!("InvalidChar {}", c))
-            }
-            bech32::Error::InvalidData(d) => {
-                MastError::EncodeToBech32Error(format!("InvalidData {}", d))
-            }
-            bech32::Error::InvalidPadding => {
-                MastError::EncodeToBech32Error("InvalidPadding".to_string())
-            }
-            bech32::Error::MixedCase => MastError::EncodeToBech32Error("MixedCase".to_string()),
-        }
-    }
-}
-
 impl From<FromHexError> for MastError {
     fn from(e: FromHexError) -> Self {
         match e {
