@@ -124,7 +124,16 @@ pub mod pallet {
         /// the aggregate public key of AB
         /// - `message`: Message used in the signing process.
         /// - `call`: The call to be executed.
-        #[pallet::weight(< T as Config >::WeightInfo::verify_threshold_signature())]
+        #[pallet::weight({
+			let dispatch_info = call.get_dispatch_info();
+			(
+				T::WeightInfo::verify_threshold_signature(call.using_encoded(|c| c.len() as u32))
+					.saturating_add(dispatch_info.weight)
+					// AccountData for inner call origin accountdata.
+					.saturating_add(T::DbWeight::get().reads_writes(1, 1)),
+				dispatch_info.class,
+			)
+		})]
         pub fn verify_threshold_signature(
             origin: OriginFor<T>,
             addr: T::AccountId,
@@ -137,12 +146,13 @@ pub mod pallet {
 
             let executable =
                 Self::apply_verify_threshold_signature(addr.clone(), signature, script, message)?;
+            let call_len = call.using_encoded(|c| c.len());
 
             if executable {
                 let result = call.dispatch(RawOrigin::Signed(addr).into());
-                Self::compute_result_weight(result)
+                Self::compute_result_weight(result, call_len as u32)
             } else {
-                Ok(Some(T::WeightInfo::verify_threshold_signature()).into())
+                Ok(Some(T::WeightInfo::verify_threshold_signature(call_len as u32)).into())
             }
         }
     }
@@ -250,16 +260,21 @@ impl<T: Config> Pallet<T> {
     /// Return the weight of a dispatch call result as an `Option`.
     ///
     /// Will return the weight regardless of what the state of the result is.
-    fn compute_result_weight(mut result: DispatchResultWithPostInfo) -> DispatchResultWithPostInfo {
+    fn compute_result_weight(
+        mut result: DispatchResultWithPostInfo,
+        call_len: u32,
+    ) -> DispatchResultWithPostInfo {
         match &mut result {
             Ok(post_info) => {
                 post_info.actual_weight = post_info.actual_weight.map(|actual_weight| {
-                    T::WeightInfo::verify_threshold_signature().saturating_add(actual_weight)
+                    T::WeightInfo::verify_threshold_signature(call_len)
+                        .saturating_add(actual_weight)
                 })
             }
             Err(err) => {
                 err.post_info.actual_weight = err.post_info.actual_weight.map(|actual_weight| {
-                    T::WeightInfo::verify_threshold_signature().saturating_add(actual_weight)
+                    T::WeightInfo::verify_threshold_signature(call_len)
+                        .saturating_add(actual_weight)
                 })
             }
         };

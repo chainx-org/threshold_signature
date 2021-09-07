@@ -31,7 +31,7 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for pallet_threshold_signature.
 pub trait WeightInfo {
     fn generate_address() -> Weight;
-    fn verify_threshold_signature() -> Weight;
+    fn verify_threshold_signature(z: u32) -> Weight;
 }
 
 /// Weights for pallet_threshold_signature using the Substrate node and recommended hardware.
@@ -40,8 +40,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
     fn generate_address() -> Weight {
         (474_714_000_u64).saturating_add(T::DbWeight::get().writes(1_u64))
     }
-    fn verify_threshold_signature() -> Weight {
-        (886_249_000_u64).saturating_add(T::DbWeight::get().reads(1_u64))
+    fn verify_threshold_signature(z: u32) -> Weight {
+        (886_249_000_u64).saturating_add((1_000_u64).saturating_mul(z as Weight))
     }
 }
 
@@ -50,7 +50,7 @@ impl WeightInfo for () {
     fn generate_address() -> Weight {
         (474_714_000_u64).saturating_add(RocksDbWeight::get().writes(1_u64))
     }
-    fn verify_threshold_signature() -> Weight {
-        (886_249_000_u64).saturating_add(RocksDbWeight::get().reads(1_u64))
+    fn verify_threshold_signature(z: u32) -> Weight {
+        (886_249_000_u64).saturating_add((1_000_u64).saturating_mul(z as Weight))
     }
 }

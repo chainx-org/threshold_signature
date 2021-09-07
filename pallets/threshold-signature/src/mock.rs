@@ -77,8 +77,7 @@ impl pallet_threshold_signature::Config for Test {
 pub fn new_test_ext() -> sp_io::TestExternalities {
     let mut t = system::GenesisConfig::default()
         .build_storage::<Test>()
-        .unwrap()
-        .into();
+        .unwrap();
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![
             (1, 10),
