@@ -116,8 +116,8 @@ pub mod pallet {
 
         /// Verify the multi-signature address and then call other transactions.
         ///
-        /// - `addr`: Represents a multi-signature address. Represents a multi-signature address.
-        /// For example, the aggregate public key of ABC
+        /// - `addr`: Represents a multi-signature address. For example, the aggregate public key
+        /// of ABC
         /// - `signature`: Usually represents the aggregate signature of m individuals. For example,
         /// the aggregate signature of AB
         /// - `script`: Usually represents the aggregate public key of m individuals. For example,
