@@ -53,7 +53,7 @@ fn generate_address_wrong_scripts() {
         );
     });
 }
-
+// TODO change verify_signature to pass script and exec script
 #[test]
 fn verify_signature_should_work() {
     new_test_ext().execute_with(|| {

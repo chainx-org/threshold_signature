@@ -26,16 +26,23 @@ use self::{
     mast::{tweak_pubkey, Mast, XOnly},
     primitive::{Message, Script, Signature},
 };
-use codec::Decode;
+use codec::{Decode, Encode};
 use frame_support::{
     dispatch::{DispatchError, DispatchResultWithPostInfo, PostDispatchInfo},
     inherent::Vec,
 };
+use hashes::{sha256, Hash};
 use mast::{tagged_branch, ScriptMerkleNode};
 pub use pallet::*;
 use schnorrkel::{signing_context, PublicKey, Signature as SchnorrSignature};
 use sp_core::sp_std::convert::TryFrom;
 use sp_std::prelude::*;
+use crate::primitive::{ScriptHash, OpCode};
+use frame_system::RawOrigin;
+use frame_support::traits::Currency;
+use frame_support::sp_runtime::traits::StaticLookup;
+pub type BalanceOf<T> =
+    <pallet_balances::Pallet<T> as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -44,18 +51,19 @@ pub mod pallet {
         dispatch::{DispatchResult, Dispatchable, GetDispatchInfo},
         pallet_prelude::*,
     };
-    use frame_system::{pallet_prelude::*, RawOrigin};
+    use frame_system::{pallet_prelude::*};
+    use crate::primitive::{ScriptHash, OpCode};
 
     /// Configure the pallet by specifying the parameters and types on which it depends.
     #[pallet::config]
-    pub trait Config: frame_system::Config {
+    pub trait Config: frame_system::Config + pallet_balances::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         /// A dispatchable call.
         type Call: Parameter
-            + Dispatchable<Origin = Self::Origin, PostInfo = PostDispatchInfo>
-            + GetDispatchInfo
-            + From<frame_system::Call<Self>>;
+        + Dispatchable<Origin=Self::Origin, PostInfo=PostDispatchInfo>
+        + GetDispatchInfo
+        + From<frame_system::Call<Self>>;
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
     }
@@ -67,8 +75,14 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn addr_to_script)]
     pub type AddrToScript<T: Config> =
-        StorageMap<_, Twox64Concat, T::AccountId, Vec<Script>, ValueQuery>;
+    StorageMap<_, Twox64Concat, T::AccountId, Vec<Script>, ValueQuery>;
 
+    #[pallet::storage]
+    #[pallet::getter(fn script_hash_to_addr)]
+    pub type ScriptHashToAddr<T: Config> =
+    StorageMap<_, Twox64Concat, ScriptHash, T::AccountId, ValueQuery>;
+
+    // TODO Add pass_script event and exec_script event
     #[pallet::event]
     #[pallet::metadata(T::AccountId = "AccountId")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
@@ -113,7 +127,7 @@ pub mod pallet {
             Self::deposit_event(Event::GenerateAddress(addr));
             Ok(())
         }
-
+        // TODO fix annotation
         /// Verify the multi-signature address and then call other transactions.
         ///
         /// - `addr`: Represents a multi-signature address. For example, the aggregate public key
@@ -124,33 +138,40 @@ pub mod pallet {
         /// the aggregate public key of AB
         /// - `message`: Message used in the signing process.
         /// - `call`: The call to be executed.
-        #[pallet::weight({
-			let dispatch_info = call.get_dispatch_info();
-			(
-				T::WeightInfo::verify_threshold_signature().saturating_add(dispatch_info.weight),
-				dispatch_info.class,
-			)
-		})]
-        pub fn verify_threshold_signature(
+        #[pallet::weight(< T as Config >::WeightInfo::verify_threshold_signature())]
+        pub fn pass_script(
             origin: OriginFor<T>,
             addr: T::AccountId,
             signature: Vec<u8>,
             script: Vec<u8>,
             message: Vec<u8>,
-            call: Box<<T as Config>::Call>,
+            script_hash: ScriptHash,
         ) -> DispatchResultWithPostInfo {
             ensure_signed(origin)?;
 
             let executable =
                 Self::apply_verify_threshold_signature(addr.clone(), signature, script, message)?;
-            let _ = call.using_encoded(|c| c.len());
 
             if executable {
-                let result = call.dispatch(RawOrigin::Signed(addr).into());
-                Self::compute_result_weight(result)
-            } else {
-                Ok(Some(T::WeightInfo::verify_threshold_signature()).into())
+                ScriptHashToAddr::<T>::insert(script_hash, addr);
             }
+            Ok(Some(<T as Config>::WeightInfo::verify_threshold_signature()).into())
+        }
+        // TODO add annotation and weight
+        #[pallet::weight(< T as Config >::WeightInfo::verify_threshold_signature())]
+        pub fn exec_script(
+            origin: OriginFor<T>,
+            call: OpCode,
+            amount: BalanceOf<T>,
+            time_lock: (T::BlockNumber, T::BlockNumber),
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let script_hash = Self::compute_script_hash(who.clone(), call.clone(), amount, time_lock);
+            if ScriptHashToAddr::<T>::contains_key(script_hash.clone()) {
+                let addr = Self::script_hash_to_addr(script_hash);
+                Self::apply_exec_script(who, addr, call, amount, time_lock);
+            }
+            Ok(())
         }
     }
 }
@@ -254,20 +275,28 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Calculate the sum of verify weight and call weight
-    fn compute_result_weight(mut result: DispatchResultWithPostInfo) -> DispatchResultWithPostInfo {
-        match &mut result {
-            Ok(post_info) => {
-                post_info.actual_weight = post_info.actual_weight.map(|actual_weight| {
-                    T::WeightInfo::verify_threshold_signature().saturating_add(actual_weight)
-                })
+    pub fn compute_script_hash(account: T::AccountId, call: OpCode, _amount: BalanceOf<T>, time_lock: (T::BlockNumber, T::BlockNumber)) -> ScriptHash {
+        let mut input: Vec<u8> = vec![];
+        input.extend(&account.encode());
+        input.push(call.into());
+        // TODO amount encode
+        // input.extend(&(amount as u128).to_le_bytes());
+        input.extend(&time_lock.0.encode());
+        input.extend(&time_lock.1.encode());
+        sha256::Hash::hash(&input).to_vec()
+    }
+
+    fn apply_exec_script(account: T::AccountId, addr: T::AccountId, call: OpCode, amount: BalanceOf<T>, time_lock: (T::BlockNumber, T::BlockNumber)) -> bool {
+        let current_block = frame_system::Pallet::<T>::block_number();
+        if time_lock.0 <= current_block && current_block <= time_lock.1 {
+            match call {
+                OpCode::Transfer => {
+                    let _ = pallet_balances::Pallet::<T>::transfer(RawOrigin::Signed(addr).into(), T::Lookup::unlookup(account), amount.into());
+                }
             }
-            Err(err) => {
-                err.post_info.actual_weight = err.post_info.actual_weight.map(|actual_weight| {
-                    T::WeightInfo::verify_threshold_signature().saturating_add(actual_weight)
-                })
-            }
-        };
-        result
+            true
+        } else {
+            false
+        }
     }
 }
