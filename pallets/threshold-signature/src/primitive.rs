@@ -18,14 +18,14 @@ pub type ScriptHash = Vec<u8>;
 
 /// Opcodes in custom scripts
 #[derive(Clone, Debug, Decode, Encode, PartialEq)]
-pub enum OpCode{
-    Transfer
+pub enum OpCode {
+    Transfer,
 }
 
-impl From<OpCode> for u8{
+impl From<OpCode> for u8 {
     fn from(opcode: OpCode) -> Self {
-        match opcode{
-            OpCode::Transfer => 0u8
+        match opcode {
+            OpCode::Transfer => 0u8,
         }
     }
 }
