@@ -149,7 +149,7 @@ pub mod pallet {
         /// the aggregate public key of AB
         /// - `message`: Message used in the signing process.
         /// - `call`: The call to be executed.
-        #[pallet::weight(< T as Config >::WeightInfo::verify_threshold_signature())]
+        #[pallet::weight(< T as Config >::WeightInfo::pass_script())]
         pub fn pass_script(
             origin: OriginFor<T>,
             addr: T::AccountId,
@@ -159,19 +159,11 @@ pub mod pallet {
             script_hash: ScriptHash,
         ) -> DispatchResult {
             ensure_signed(origin)?;
-
-            let executable =
-                Self::apply_verify_threshold_signature(addr.clone(), signature, script, message)?;
-
-            if executable {
-                // TODO What if the same script corresponds to different threshold signature addresses？
-                ScriptHashToAddr::<T>::insert(script_hash.clone(), addr.clone());
-                Self::deposit_event(Event::<T>::PassScript(script_hash, addr))
-            }
-            Ok(())
+            Self::apply_pass_script(addr, signature, script, message, script_hash)
         }
+
         // TODO add annotation and weight
-        #[pallet::weight(< T as Config >::WeightInfo::verify_threshold_signature())]
+        #[pallet::weight(< T as Config >::WeightInfo::exec_script())]
         pub fn exec_script(
             origin: OriginFor<T>,
             call: OpCode,
@@ -182,7 +174,7 @@ pub mod pallet {
             let script_hash =
                 Self::compute_script_hash(who.clone(), call.clone(), amount, time_lock);
             Self::apply_exec_script(who, call, amount, time_lock, script_hash)?;
-            Ok(Some(<T as Config>::WeightInfo::verify_threshold_signature()).into())
+            Ok(Some(<T as Config>::WeightInfo::exec_script()).into())
         }
     }
 }
@@ -203,6 +195,24 @@ impl<T: Config> Pallet<T> {
         let account = T::AccountId::decode(&mut &addr[..]).unwrap_or_default();
         AddrToScript::<T>::insert(account.clone(), scripts);
         Ok(account)
+    }
+
+    pub fn apply_pass_script(
+        addr: T::AccountId,
+        signature: Signature,
+        full_script: Script,
+        message: Message,
+        script_hash: ScriptHash,
+    ) -> DispatchResult {
+        let executable =
+            Self::apply_verify_threshold_signature(addr.clone(), signature, full_script, message)?;
+
+        if executable {
+            // TODO What if the same script corresponds to different threshold signature addresses？
+            ScriptHashToAddr::<T>::insert(script_hash.clone(), addr.clone());
+            Self::deposit_event(Event::<T>::PassScript(script_hash, addr));
+        }
+        Ok(())
     }
 
     pub fn apply_verify_threshold_signature(
@@ -327,9 +337,9 @@ impl<T: Config> Pallet<T> {
                     ));
                 }
             }
-            Ok(Some(<T as Config>::WeightInfo::verify_threshold_signature()).into())
+            Ok(Some(<T as Config>::WeightInfo::exec_script()).into())
         } else {
-            Ok(Some(<T as Config>::WeightInfo::verify_threshold_signature()).into())
+            Ok(Some(<T as Config>::WeightInfo::exec_script()).into())
             // TODO should return error
             // Err(Error::<T>::MisMatchTimeLock.into())
         }
