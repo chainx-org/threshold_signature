@@ -60,9 +60,11 @@ impl Mast {
         let proof = {
             assert!(self.pubkeys.iter().any(|s| *s == *pubkey));
             let mut matches = vec![];
-            for s in self.pubkeys.iter() {
+            let mut index = 9999;
+            for (i, s) in self.pubkeys.iter().enumerate() {
                 if *s == *pubkey {
-                    matches.push(true)
+                    matches.push(true);
+                    index = i;
                 } else {
                     matches.push(false)
                 }
@@ -72,7 +74,9 @@ impl Mast {
                 .iter()
                 .map(|s| tagged_leaf(s))
                 .collect::<Result<Vec<_>>>()?;
-            Ok(PartialMerkleTree::from_leaf_nodes(&leaf_nodes, &matches)?.collected_hashes())
+            let filter_proof = MerkleNode::from_inner(leaf_nodes[index].into_inner());
+            Ok(PartialMerkleTree::from_leaf_nodes(&leaf_nodes, &matches)?
+                .collected_hashes(filter_proof))
         };
 
         if let Err(e) = proof {
@@ -85,7 +89,6 @@ impl Mast {
 
     /// generate threshold signature address
     pub fn generate_tweak_pubkey(&self, inner_pubkey: &XOnly) -> Result<Vec<u8>> {
-        // let addr = {
         let root = self.calc_root()?;
         tweak_pubkey(inner_pubkey, &root)
     }
@@ -212,7 +215,6 @@ mod tests {
         assert_eq!(
             proof.iter().map(|p| p.to_hex()).collect::<Vec<_>>(),
             vec![
-                "c51bcfc34f78ae1518b7feaed7d0702d790d946aa5732cb9ad75d22fcd3917d4",
                 "f49b4c19bf53dfcdd50bc565ccca5cfc64226ef20301502f2264b25e2f0adb3a",
                 "aa4bc1ce7be6887fad68d95fcf8b0d19788640ead71837ed43a2b518e673ba2f",
             ]
@@ -220,7 +222,7 @@ mod tests {
     }
 
     #[test]
-    fn test_bech32m_addr() {
+    fn test_final_addr() {
         let internal_key = XOnly::try_from(
             hex::decode("881102cd9cf2ee389137a99a2ad88447b9e8b60c350cda71aff049233574c768")
                 .unwrap(),

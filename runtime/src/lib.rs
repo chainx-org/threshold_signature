@@ -496,9 +496,10 @@ impl_runtime_apis! {
             addr: AccountId,
             signature: TSignature,
             pubkey: Pubkey,
+            control_block: Vec<Vec<u8>>,
             message: Message,
         ) -> Result<bool, DispatchError> {
-            ThresholdSignature::apply_verify_threshold_signature(addr, signature, pubkey, message)
+            ThresholdSignature::apply_verify_threshold_signature(addr, signature, pubkey, control_block, message)
         }
     }
 }

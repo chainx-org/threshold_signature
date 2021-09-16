@@ -23,7 +23,7 @@ pub mod weights;
 
 use self::weights::WeightInfo;
 use self::{
-    mast::{tweak_pubkey, Mast, XOnly},
+    mast::{tweak_pubkey, XOnly},
     primitive::{Message, Pubkey, Signature},
 };
 use crate::primitive::{OpCode, ScriptHash};
@@ -35,7 +35,7 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use hashes::{sha256, Hash};
-use mast::{tagged_branch, MerkleNode};
+use mast::{tagged_branch, tagged_leaf, MerkleNode};
 pub use pallet::*;
 use schnorrkel::{signing_context, PublicKey, Signature as SchnorrSignature};
 use sp_core::sp_std::convert::TryFrom;
@@ -71,11 +71,6 @@ pub mod pallet {
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(_);
-
-    #[pallet::storage]
-    #[pallet::getter(fn addr_to_pubkey)]
-    pub type AddrToPubkey<T: Config> =
-        StorageMap<_, Twox64Concat, T::AccountId, Vec<Pubkey>, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn script_hash_to_addr)]
@@ -118,6 +113,8 @@ pub mod pallet {
         InvalidEncoding,
         /// Signature verification failure
         InvalidSignature,
+        /// Proof is invalid
+        InvalidProof,
         /// Mismatch time lock
         MisMatchTimeLock,
         /// Scripts that did not pass verification
@@ -126,27 +123,17 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Generate threshold signature address according to the pubkey provided by the user.
+        /// Verify the multi-signature address and authorize to the script represented by the script
+        /// hash.
         ///
-        /// - `pubkeys`: The first parameter is inner pubkey. The remaining parameters are other
-        /// pubkeys. For example, inner pubkey can be the aggregate public
-        /// key of ABC, and other pubkeys can be the aggregate public key of AB, BC and AC.
-        #[pallet::weight(< T as Config >::WeightInfo::generate_address())]
-        pub fn generate_address(origin: OriginFor<T>, pubkeys: Vec<Vec<u8>>) -> DispatchResult {
-            ensure_signed(origin)?;
-            let addr = Self::apply_generate_address(pubkeys)?;
-            Self::deposit_event(Event::GenerateAddress(addr));
-            Ok(())
-        }
-
-        /// Verify the multi-signature address and authorize to the script represented by the script hash.
-        ///
-        /// - `addr`: Represents a multi-signature address. For example, the aggregate public key
-        /// of ABC
+        /// - `addr`: Represents a threshold signature address. Calculated by merkle root and inner
+        /// pubkey.
         /// - `signature`: Usually represents the aggregate signature of m individuals. For example,
         /// the aggregate signature of AB
         /// - `pubkey`: Usually represents the aggregate public key of m individuals. For example,
         /// the aggregate public key of AB
+        /// - `control_block`: The first element is inner pubkey, and the remaining elements are
+        /// merkle proof. For example, merkle proof may be [tag_hash(pubkey_BC), tag_hash(pubkey_AC)].
         /// - `message`: Message used in the signing process.
         /// - `script_hash`: Used to represent the authorized script hash.
         #[pallet::weight(< T as Config >::WeightInfo::pass_script())]
@@ -155,19 +142,24 @@ pub mod pallet {
             addr: T::AccountId,
             signature: Vec<u8>,
             pubkey: Vec<u8>,
+            control_block: Vec<Vec<u8>>,
             message: Vec<u8>,
-            script_hash: ScriptHash,
+            script_hash: Vec<u8>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
-            Self::apply_pass_script(addr, signature, pubkey, message, script_hash)
+            Self::apply_pass_script(addr, signature, pubkey, control_block, message, script_hash)
         }
 
         /// The user takes the initiative to execute the truly authorized script.
         ///
-        /// - `origin`: Signed executor of the script
+        /// - `origin`: Signed executor of the script. It must be pass_script to complete the script
+        /// authorized to the user before the user can execute successfully
         /// - `call`: Action represented by the script.
         /// - `amount`: The number represented by the script.
-        /// - `time_lock`: Time lock required for script execution.
+        /// - `time_lock`: Time lock required for script execution. The script must meet the time
+        /// lock limit before it can be executed successfully. The format is
+        /// (BlockNumber, BlockNumber), the first parameter is the lower limit of the time lock,
+        /// the second is the upper limit
         #[pallet::weight(< T as Config >::WeightInfo::exec_script())]
         pub fn exec_script(
             origin: OriginFor<T>,
@@ -185,32 +177,21 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    fn apply_generate_address(pubkeys: Vec<Pubkey>) -> Result<T::AccountId, DispatchError> {
-        let pubkey_nodes = pubkeys
-            .iter()
-            .map(|pubkey| XOnly::try_from(pubkey.clone()))
-            .collect::<Result<Vec<XOnly>, _>>()
-            .map_err::<Error<T>, _>(Into::into)?;
-
-        let mast = Mast::new(Vec::from(&pubkey_nodes[1..]));
-        let addr = mast
-            .generate_tweak_pubkey(&pubkey_nodes[0])
-            .map_err::<Error<T>, _>(Into::into)?;
-
-        let account = T::AccountId::decode(&mut &addr[..]).unwrap_or_default();
-        AddrToPubkey::<T>::insert(account.clone(), pubkeys);
-        Ok(account)
-    }
-
     pub fn apply_pass_script(
         addr: T::AccountId,
         signature: Signature,
         pubkey: Pubkey,
+        control_block: Vec<Vec<u8>>,
         message: Message,
         script_hash: ScriptHash,
     ) -> DispatchResult {
-        let executable =
-            Self::apply_verify_threshold_signature(addr.clone(), signature, pubkey, message)?;
+        let executable = Self::apply_verify_threshold_signature(
+            addr.clone(),
+            signature,
+            pubkey,
+            control_block,
+            message,
+        )?;
 
         if executable {
             // TODO What if the same script corresponds to different threshold signature addresses？
@@ -224,31 +205,20 @@ impl<T: Config> Pallet<T> {
         addr: T::AccountId,
         signature: Signature,
         pubkey: Pubkey,
+        control_block: Vec<Vec<u8>>,
         message: Message,
     ) -> Result<bool, DispatchError> {
-        // make sure the address has its corresponding pubkeys
-        if !AddrToPubkey::<T>::contains_key(addr.clone()) {
-            return Err(Error::<T>::NoAddressInStorage.into());
-        }
+        let inner_pubkey =
+            XOnly::try_from(control_block[0].clone()).map_err::<Error<T>, _>(Into::into)?;
 
-        let pubkeys = AddrToPubkey::<T>::get(&addr);
-
-        // convert pubkey code into leaf nodes of MAST
-        let pubkey_nodes = pubkeys
+        let proofs = control_block
             .iter()
-            .map(|pubkey| XOnly::try_from(pubkey.clone()))
-            .collect::<Result<Vec<XOnly>, _>>()
+            .skip(1)
+            .map(|c| MerkleNode::from_slice(c))
+            .collect::<Result<Vec<MerkleNode>, _>>()
             .map_err::<Error<T>, _>(Into::into)?;
 
-        // construct the MAST tree and skip the first one, which is actually the internal public key
-        let mast = Mast::new(Vec::from(&pubkey_nodes[1..]));
-        let exec_pubkey = XOnly::try_from(pubkey.clone()).map_err::<Error<T>, _>(Into::into)?;
-        // construct the merkel proof for the pubkey to be executed
-        let proof = mast
-            .generate_merkle_proof(&exec_pubkey)
-            .map_err::<Error<T>, _>(Into::into)?;
-
-        Self::verify_proof(addr, &proof, pubkey_nodes)?;
+        Self::verify_proof(addr, pubkey.clone(), inner_pubkey, &proofs)?;
         Self::verify_signature(signature, pubkey, message)?;
 
         Ok(true)
@@ -259,18 +229,21 @@ impl<T: Config> Pallet<T> {
     /// if the proof contains an executing pubkey hash, the merkel root is calculated from here
     fn verify_proof(
         addr: T::AccountId,
-        proof: &[MerkleNode],
-        pubkeys: Vec<XOnly>,
+        pubkey: Pubkey,
+        inner_pubkey: XOnly,
+        proofs: &[MerkleNode],
     ) -> Result<(), Error<T>> {
+        let pubkey = XOnly::try_from(pubkey).map_err::<Error<T>, _>(Into::into)?;
+        let leaf_node = tagged_leaf(&pubkey).map_err::<Error<T>, _>(Into::into)?;
         // the first proof
-        let mut current_node = proof[0];
+        let mut current_node = MerkleNode::from_inner(leaf_node.into_inner());
         // compute merkel root
-        for node in proof.iter().skip(1) {
+        for node in proofs.iter() {
             current_node = tagged_branch(current_node, *node)?;
         }
         let merkel_root = current_node;
         // calculate the output address using the internal public key and the merkle root
-        let tweaked = &tweak_pubkey(&pubkeys[0], &merkel_root)?;
+        let tweaked = &tweak_pubkey(&inner_pubkey, &merkel_root)?;
         let output_address = T::AccountId::decode(&mut &tweaked[..]).unwrap_or_default();
 
         // ensure that the final computed public key is the same as
@@ -306,6 +279,12 @@ impl<T: Config> Pallet<T> {
         amount: BalanceOf<T>,
         time_lock: (T::BlockNumber, T::BlockNumber),
     ) -> ScriptHash {
+        log::info!("account:{:?}", account.encode());
+        log::info!("call:{:?}", u8::from(call.clone()));
+        log::info!("amount:{:?}", amount);
+        log::info!("time_lock.0:{:?}", time_lock.0.encode());
+        log::info!("time_lock.1:{:?}", time_lock.1.encode());
+
         let mut input: Vec<u8> = vec![];
         input.extend(&account.encode());
         input.push(call.into());
@@ -322,6 +301,7 @@ impl<T: Config> Pallet<T> {
         time_lock: (T::BlockNumber, T::BlockNumber),
         script_hash: ScriptHash,
     ) -> DispatchResultWithPostInfo {
+        log::info!("script_hash:{:?}", script_hash);
         if !ScriptHashToAddr::<T>::contains_key(script_hash.clone()) {
             return Err(Error::<T>::NoPassScript.into());
         }

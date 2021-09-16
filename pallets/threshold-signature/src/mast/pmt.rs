@@ -1,5 +1,6 @@
 // Refer from https://github.com/rust-bitcoin/rust-bitcoin/blob/master/src/util/merkleblock.rs
 #![allow(dead_code)]
+
 use super::{
     error::{MastError, Result},
     hash_types::*,
@@ -58,7 +59,7 @@ pub struct PartialMerkleTree {
     num_leaf_nodes: u32,
     /// node-is-parent-of-matched-leaf_node bits
     bits: Vec<bool>,
-    /// Transaction ids and internal hashes
+    /// pubkey hash and internal hashes
     hashes: Vec<MerkleNode>,
     /// The height of hashes
     heights: Vec<u32>,
@@ -66,7 +67,7 @@ pub struct PartialMerkleTree {
 
 impl PartialMerkleTree {
     /// Construct a partial merkle tree
-    /// The `leaf_nodes` are the node hashes of the node and the `matches` is the contains flags
+    /// The `leaf_nodes` are the pubkey hashes and the `matches` is the contains flags
     /// wherever a leaf_node hash should be included in the proof.
     ///
     /// Panics when `leaf_nodes` is empty or when `matches` has a different length
@@ -105,7 +106,7 @@ impl PartialMerkleTree {
         indexes.clear();
         // An empty set will not work
         if self.num_leaf_nodes == 0 {
-            return Err(MastError::InvalidMast("No nodes in MAST".to_owned()));
+            return Err(MastError::InvalidMast("No Pubkeys in MAST".to_owned()));
         };
         // check for excessively high numbers of leaf_nodes
         // if self.num_leaf_nodes > MAX_BLOCK_WEIGHT / MIN_TRANSACTION_WEIGHT {
@@ -288,8 +289,13 @@ impl PartialMerkleTree {
         }
     }
 
-    pub fn collected_hashes(&self) -> Vec<MerkleNode> {
-        let mut zipped = self.hashes.iter().zip(&self.heights).collect::<Vec<_>>();
+    pub fn collected_hashes(&self, filter_proof: MerkleNode) -> Vec<MerkleNode> {
+        let mut zipped = self
+            .hashes
+            .iter()
+            .zip(&self.heights)
+            .filter(|(p, _)| **p != filter_proof)
+            .collect::<Vec<_>>();
         zipped.sort_unstable_by_key(|(_, h)| **h);
         zipped.into_iter().map(|(a, _)| *a).collect::<Vec<_>>()
     }
@@ -305,7 +311,7 @@ mod tests {
 
     #[test]
     fn pmt_proof_generate_correct_order() {
-        let txids: Vec<LeafNode> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        let leaf_nodes: Vec<LeafNode> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
             .iter()
             .map(|i| LeafNode::from_hex(&format!("{:064x}", i)).unwrap())
             .collect();
@@ -313,16 +319,17 @@ mod tests {
         let matches = vec![
             false, false, false, false, false, false, false, false, false, false, false, true,
         ];
-        let tree = PartialMerkleTree::from_leaf_nodes(&txids, &matches).unwrap();
+        let tree = PartialMerkleTree::from_leaf_nodes(&leaf_nodes, &matches).unwrap();
         let mut matches_vec = vec![];
         let mut indexes = vec![];
         let root = tree
             .extract_matches(&mut matches_vec, &mut indexes)
             .unwrap();
 
-        let proofs = tree.collected_hashes();
-        let mut root1 = proofs[0];
-        for i in proofs.iter().skip(1) {
+        let filter_proof = MerkleNode::from_inner(leaf_nodes[11].into_inner());
+        let proofs = tree.collected_hashes(filter_proof);
+        let mut root1 = filter_proof;
+        for i in proofs.iter() {
             root1 = tagged_branch(root1, *i).unwrap();
         }
         assert_eq!(root, root1)

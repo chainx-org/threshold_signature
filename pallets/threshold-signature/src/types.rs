@@ -22,3 +22,9 @@ impl<T: Config> From<SignatureError> for Error<T> {
         Error::<T>::InvalidSignature
     }
 }
+
+impl<T: Config> From<bitcoin_hashes::Error> for Error<T> {
+    fn from(_: bitcoin_hashes::Error) -> Self {
+        Error::<T>::InvalidProof
+    }
+}
