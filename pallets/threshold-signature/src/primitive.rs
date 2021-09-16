@@ -3,11 +3,11 @@
 use codec::{Decode, Encode};
 
 use frame_support::inherent::Vec;
-// TODO change into a suitable name
-/// Script used to represent the public key
-pub type Script = Vec<u8>;
 
-/// Signature
+/// The leaf node of the mast structure is usually the tag hash of the pubkey
+pub type Pubkey = Vec<u8>;
+
+/// Usually represents the Signature corresponding to Pubkey
 pub type Signature = Vec<u8>;
 
 /// Message used to indicate a signed message

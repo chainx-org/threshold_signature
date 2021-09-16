@@ -41,7 +41,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
 /// Import the threshold-signature pallet.
-pub use pallet_threshold_signature::primitive::{Message, Script, Signature as TSignature};
+pub use pallet_threshold_signature::primitive::{Message, Pubkey, Signature as TSignature};
 use sp_runtime::DispatchError;
 
 /// An index to a block.
@@ -495,10 +495,10 @@ impl_runtime_apis! {
         fn verify_threshold_signature(
             addr: AccountId,
             signature: TSignature,
-            script: Script,
+            pubkey: Pubkey,
             message: Message,
         ) -> Result<bool, DispatchError> {
-            ThresholdSignature::apply_verify_threshold_signature(addr, signature, script, message)
+            ThresholdSignature::apply_verify_threshold_signature(addr, signature, pubkey, message)
         }
     }
 }

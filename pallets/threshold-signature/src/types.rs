@@ -11,7 +11,6 @@ impl<T: Config> From<MastError> for Error<T> {
             MastError::MastGenProofError => Error::<T>::MastGenProofError,
             MastError::MastGenAddrError => Error::<T>::MastGenAddrError,
             MastError::FromHexError(_) => Error::<T>::InvalidEncoding,
-            MastError::EncodeToBech32Error(_) => Error::<T>::InvalidEncoding,
             MastError::IoError(_) => Error::<T>::InvalidEncoding,
             MastError::KeyPairError(_) => Error::<T>::InvalidEncoding,
         }

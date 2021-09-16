@@ -1,7 +1,7 @@
 use jsonrpc_core::Result;
 use jsonrpc_derive::rpc;
 pub use pallet_threshold_signature_rpc_runtime_api::{
-    Message, Script, Signature, ThresholdSignatureApi as ThresholdSignatureRuntimeApi,
+    Message, Pubkey, Signature, ThresholdSignatureApi as ThresholdSignatureRuntimeApi,
 };
 use sp_api::{BlockId, BlockT, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
@@ -16,7 +16,7 @@ pub trait ThresholdSignatureApi<BlockHash> {
         &self,
         addr: AccountId32,
         signature: Signature,
-        script: Script,
+        pubkey: Pubkey,
         message: Message,
         at: Option<BlockHash>,
     ) -> Result<bool>;
@@ -48,7 +48,7 @@ where
         &self,
         addr: AccountId32,
         signature: Signature,
-        script: Script,
+        pubkey: Pubkey,
         message: Message,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<bool> {
@@ -57,7 +57,7 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash));
         Ok(api
-            .verify_threshold_signature(&at, addr, signature, script, message)
+            .verify_threshold_signature(&at, addr, signature, pubkey, message)
             .is_ok())
     }
 }

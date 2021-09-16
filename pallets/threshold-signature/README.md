@@ -4,23 +4,23 @@
 `pallet-threshold-signature` is an m-of-n threshold signature module that combines Schnorr signature and MAST (Merkelized Abstract Syntax Tree) implementation. This module mainly implements threshold signature address generation and verification.
 
 ## Storage
-- `AddrToScript`: is a Map that stores the mapping of threshold signature addresses to scripts.
+- `AddrToPubkey`: is a Map that stores the mapping of threshold signature addresses to pubkeys.
 
 ## Call
 
-- `generate_address(origin, scripts)`
+- `generate_address(origin, pubkeys)`
 
-  Generate threshold signature address according to the script provided by the user.
+  Generate threshold signature address according to the pubkey provided by the user.
 
-  `scripts`: The first parameter is inner pubkey. The remaining parameters are other scripts. For example, inner pubkey can be the aggregate public key of ABC, and other scripts can be the aggregate public key of AB, BC and AC.
+  `pubkeys`: The first parameter is inner pubkey. The remaining parameters are other pubkeys. For example, inner pubkey can be the aggregate public key of ABC, and other pubkeys can be the aggregate public key of AB, BC and AC.
 
-- `verify_threshold_signature(origin, addr, signature, script, message, call)`
+- `verify_threshold_signature(origin, addr, signature, pubkey, message, call)`
 
   Verify the threshold signature address and then call other transactions.
 
   `addr`: Represents a threshold signature address. For example, the aggregate public key of ABC   
   `signature`: Usually represents the aggregate signature of m individuals. For example, the aggregate signature of AB   
-  `script`: Usually represents the aggregate public key of m individuals. For example, the aggregate public key of AB   
+  `pubkey`: Usually represents the aggregate public key of m individuals. For example, the aggregate public key of AB   
   `message`: Message used in the signing process.   
   `call`: The transaction that needs to be called after the threshold signature verification is passed.   
 
@@ -90,4 +90,4 @@ The picture above is the transfer to the threshold signature address **`5Pe8v2KP
 
 ![](https://cdn.jsdelivr.net/gh/AAweidai/PictureBed@master/taproot/1631104780656-1631104780649.png)
 
-The figure above is the operation interface for verifying the threshold signature. Fill in `addr` with **`5Pe8v2KPm5dfdgRPDjAWdBSmWva7aeEH5nbZpYsHBX3mAVPK`**. Fill in `signature` with `A, B's aggregate signature of the above message`. Fill in the `script` with `Aggregate public key of A, B`. Fill in `Message used to generate signature` in `message`. After the submission is successful, the operation of A and B co-signature transfer 100 from the threshold signature address to FERDIE is completed here.
+The figure above is the operation interface for verifying the threshold signature. Fill in `addr` with **`5Pe8v2KPm5dfdgRPDjAWdBSmWva7aeEH5nbZpYsHBX3mAVPK`**. Fill in `signature` with `A, B's aggregate signature of the above message`. Fill in the `pubkey` with `Aggregate public key of A, B`. Fill in `Message used to generate signature` in `message`. After the submission is successful, the operation of A and B co-signature transfer 100 from the threshold signature address to FERDIE is completed here.

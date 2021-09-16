@@ -24,7 +24,7 @@ pub mod weights;
 use self::weights::WeightInfo;
 use self::{
     mast::{tweak_pubkey, Mast, XOnly},
-    primitive::{Message, Script, Signature},
+    primitive::{Message, Pubkey, Signature},
 };
 use crate::primitive::{OpCode, ScriptHash};
 use codec::{Decode, Encode};
@@ -35,7 +35,7 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use hashes::{sha256, Hash};
-use mast::{tagged_branch, ScriptMerkleNode};
+use mast::{tagged_branch, MerkleNode};
 pub use pallet::*;
 use schnorrkel::{signing_context, PublicKey, Signature as SchnorrSignature};
 use sp_core::sp_std::convert::TryFrom;
@@ -73,9 +73,9 @@ pub mod pallet {
     pub struct Pallet<T>(_);
 
     #[pallet::storage]
-    #[pallet::getter(fn addr_to_script)]
-    pub type AddrToScript<T: Config> =
-        StorageMap<_, Twox64Concat, T::AccountId, Vec<Script>, ValueQuery>;
+    #[pallet::getter(fn addr_to_pubkey)]
+    pub type AddrToPubkey<T: Config> =
+        StorageMap<_, Twox64Concat, T::AccountId, Vec<Pubkey>, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn script_hash_to_addr)]
@@ -86,7 +86,7 @@ pub mod pallet {
     #[pallet::metadata(T::AccountId = "AccountId")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// Submit scripts to generate address. [addr]
+        /// Submit pubkeys to generate address. [addr]
         GenerateAddress(T::AccountId),
         /// Verify threshold signature and upload script hash. [script hash, addr]
         PassScript(Vec<u8>, T::AccountId),
@@ -126,43 +126,48 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Generate threshold signature address according to the script provided by the user.
+        /// Generate threshold signature address according to the pubkey provided by the user.
         ///
-        /// - `scripts`: The first parameter is inner pubkey. The remaining parameters are other
-        /// scripts. For example, inner pubkey can be the aggregate public
-        /// key of ABC, and other scripts can be the aggregate public key of AB, BC and AC.
+        /// - `pubkeys`: The first parameter is inner pubkey. The remaining parameters are other
+        /// pubkeys. For example, inner pubkey can be the aggregate public
+        /// key of ABC, and other pubkeys can be the aggregate public key of AB, BC and AC.
         #[pallet::weight(< T as Config >::WeightInfo::generate_address())]
-        pub fn generate_address(origin: OriginFor<T>, scripts: Vec<Vec<u8>>) -> DispatchResult {
+        pub fn generate_address(origin: OriginFor<T>, pubkeys: Vec<Vec<u8>>) -> DispatchResult {
             ensure_signed(origin)?;
-            let addr = Self::apply_generate_address(scripts)?;
+            let addr = Self::apply_generate_address(pubkeys)?;
             Self::deposit_event(Event::GenerateAddress(addr));
             Ok(())
         }
-        // TODO fix annotation
-        /// Verify the multi-signature address and then call other transactions.
+
+        /// Verify the multi-signature address and authorize to the script represented by the script hash.
         ///
         /// - `addr`: Represents a multi-signature address. For example, the aggregate public key
         /// of ABC
         /// - `signature`: Usually represents the aggregate signature of m individuals. For example,
         /// the aggregate signature of AB
-        /// - `script`: Usually represents the aggregate public key of m individuals. For example,
+        /// - `pubkey`: Usually represents the aggregate public key of m individuals. For example,
         /// the aggregate public key of AB
         /// - `message`: Message used in the signing process.
-        /// - `call`: The call to be executed.
+        /// - `script_hash`: Used to represent the authorized script hash.
         #[pallet::weight(< T as Config >::WeightInfo::pass_script())]
         pub fn pass_script(
             origin: OriginFor<T>,
             addr: T::AccountId,
             signature: Vec<u8>,
-            script: Vec<u8>,
+            pubkey: Vec<u8>,
             message: Vec<u8>,
             script_hash: ScriptHash,
         ) -> DispatchResult {
             ensure_signed(origin)?;
-            Self::apply_pass_script(addr, signature, script, message, script_hash)
+            Self::apply_pass_script(addr, signature, pubkey, message, script_hash)
         }
 
-        // TODO add annotation and weight
+        /// The user takes the initiative to execute the truly authorized script.
+        ///
+        /// - `origin`: Signed executor of the script
+        /// - `call`: Action represented by the script.
+        /// - `amount`: The number represented by the script.
+        /// - `time_lock`: Time lock required for script execution.
         #[pallet::weight(< T as Config >::WeightInfo::exec_script())]
         pub fn exec_script(
             origin: OriginFor<T>,
@@ -180,32 +185,32 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    fn apply_generate_address(scripts: Vec<Script>) -> Result<T::AccountId, DispatchError> {
-        let script_nodes = scripts
+    fn apply_generate_address(pubkeys: Vec<Pubkey>) -> Result<T::AccountId, DispatchError> {
+        let pubkey_nodes = pubkeys
             .iter()
-            .map(|script| XOnly::try_from(script.clone()))
+            .map(|pubkey| XOnly::try_from(pubkey.clone()))
             .collect::<Result<Vec<XOnly>, _>>()
             .map_err::<Error<T>, _>(Into::into)?;
 
-        let mast = Mast::new(Vec::from(&script_nodes[1..]));
+        let mast = Mast::new(Vec::from(&pubkey_nodes[1..]));
         let addr = mast
-            .generate_tweak_pubkey(&script_nodes[0])
+            .generate_tweak_pubkey(&pubkey_nodes[0])
             .map_err::<Error<T>, _>(Into::into)?;
 
         let account = T::AccountId::decode(&mut &addr[..]).unwrap_or_default();
-        AddrToScript::<T>::insert(account.clone(), scripts);
+        AddrToPubkey::<T>::insert(account.clone(), pubkeys);
         Ok(account)
     }
 
     pub fn apply_pass_script(
         addr: T::AccountId,
         signature: Signature,
-        full_script: Script,
+        pubkey: Pubkey,
         message: Message,
         script_hash: ScriptHash,
     ) -> DispatchResult {
         let executable =
-            Self::apply_verify_threshold_signature(addr.clone(), signature, full_script, message)?;
+            Self::apply_verify_threshold_signature(addr.clone(), signature, pubkey, message)?;
 
         if executable {
             // TODO What if the same script corresponds to different threshold signature addresses？
@@ -218,55 +223,54 @@ impl<T: Config> Pallet<T> {
     pub fn apply_verify_threshold_signature(
         addr: T::AccountId,
         signature: Signature,
-        full_script: Script,
+        pubkey: Pubkey,
         message: Message,
     ) -> Result<bool, DispatchError> {
-        // make sure the address has its corresponding scripts
-        if !AddrToScript::<T>::contains_key(addr.clone()) {
+        // make sure the address has its corresponding pubkeys
+        if !AddrToPubkey::<T>::contains_key(addr.clone()) {
             return Err(Error::<T>::NoAddressInStorage.into());
         }
 
-        let scripts = AddrToScript::<T>::get(&addr);
+        let pubkeys = AddrToPubkey::<T>::get(&addr);
 
-        // convert script code into leaf nodes of MAST
-        let script_nodes = scripts
+        // convert pubkey code into leaf nodes of MAST
+        let pubkey_nodes = pubkeys
             .iter()
-            .map(|script| XOnly::try_from(script.clone()))
+            .map(|pubkey| XOnly::try_from(pubkey.clone()))
             .collect::<Result<Vec<XOnly>, _>>()
             .map_err::<Error<T>, _>(Into::into)?;
 
         // construct the MAST tree and skip the first one, which is actually the internal public key
-        let mast = Mast::new(Vec::from(&script_nodes[1..]));
-        let exec_script =
-            XOnly::try_from(full_script.clone()).map_err::<Error<T>, _>(Into::into)?;
-        // construct the merkel proof for the script to be executed
+        let mast = Mast::new(Vec::from(&pubkey_nodes[1..]));
+        let exec_pubkey = XOnly::try_from(pubkey.clone()).map_err::<Error<T>, _>(Into::into)?;
+        // construct the merkel proof for the pubkey to be executed
         let proof = mast
-            .generate_merkle_proof(&exec_script)
+            .generate_merkle_proof(&exec_pubkey)
             .map_err::<Error<T>, _>(Into::into)?;
 
-        Self::verify_proof(addr, &proof, script_nodes)?;
-        Self::verify_signature(signature, full_script, message)?;
+        Self::verify_proof(addr, &proof, pubkey_nodes)?;
+        Self::verify_signature(signature, pubkey, message)?;
 
         Ok(true)
     }
 
     /// To verify proof
     ///
-    /// if the proof contains an executing script, the merkel root is calculated from here
+    /// if the proof contains an executing pubkey hash, the merkel root is calculated from here
     fn verify_proof(
         addr: T::AccountId,
-        proof: &[ScriptMerkleNode],
-        scripts: Vec<XOnly>,
+        proof: &[MerkleNode],
+        pubkeys: Vec<XOnly>,
     ) -> Result<(), Error<T>> {
-        // the currently executing script
-        let mut exec_script_node = proof[0];
+        // the first proof
+        let mut current_node = proof[0];
         // compute merkel root
         for node in proof.iter().skip(1) {
-            exec_script_node = tagged_branch(exec_script_node, *node)?;
+            current_node = tagged_branch(current_node, *node)?;
         }
-        let merkel_root = exec_script_node;
-        // calculate the output address using the internal public key and the script root
-        let tweaked = &tweak_pubkey(&scripts[0], &merkel_root)?;
+        let merkel_root = current_node;
+        // calculate the output address using the internal public key and the merkle root
+        let tweaked = &tweak_pubkey(&pubkeys[0], &merkel_root)?;
         let output_address = T::AccountId::decode(&mut &tweaked[..]).unwrap_or_default();
 
         // ensure that the final computed public key is the same as
@@ -281,12 +285,12 @@ impl<T: Config> Pallet<T> {
     // To verify schnorr signature
     fn verify_signature(
         signature: Signature,
-        script: Script,
+        pubkey: Pubkey,
         message: Message,
     ) -> Result<(), Error<T>> {
         let sig = SchnorrSignature::from_bytes(signature.as_slice())?;
 
-        let agg_pubkey = PublicKey::from_bytes(&script)?;
+        let agg_pubkey = PublicKey::from_bytes(&pubkey)?;
         let ctx = signing_context(b"multi-sig");
 
         if agg_pubkey.verify(ctx.bytes(&message), &sig).is_err() {
@@ -321,27 +325,25 @@ impl<T: Config> Pallet<T> {
         if !ScriptHashToAddr::<T>::contains_key(script_hash.clone()) {
             return Err(Error::<T>::NoPassScript.into());
         }
-        let addr = Self::script_hash_to_addr(script_hash.clone());
         let current_block = frame_system::Pallet::<T>::block_number();
-        if time_lock.0 <= current_block && current_block <= time_lock.1 {
-            match call {
-                OpCode::Transfer => {
-                    let _ = pallet_balances::Pallet::<T>::transfer(
-                        RawOrigin::Signed(addr.clone()).into(),
-                        T::Lookup::unlookup(account.clone()),
-                        amount.into(),
-                    )?;
-                    ScriptHashToAddr::<T>::remove(script_hash);
-                    Self::deposit_event(Event::<T>::ExecuteScript(
-                        account, addr, call, amount, time_lock,
-                    ));
-                }
+        if current_block < time_lock.0 || current_block > time_lock.1 {
+            return Err(Error::<T>::MisMatchTimeLock.into());
+        }
+
+        let addr = Self::script_hash_to_addr(script_hash.clone());
+        match call {
+            OpCode::Transfer => {
+                let pos = pallet_balances::Pallet::<T>::transfer(
+                    RawOrigin::Signed(addr.clone()).into(),
+                    T::Lookup::unlookup(account.clone()),
+                    amount.into(),
+                )?;
+                ScriptHashToAddr::<T>::remove(script_hash);
+                Self::deposit_event(Event::<T>::ExecuteScript(
+                    account, addr, call, amount, time_lock,
+                ));
+                Ok(pos)
             }
-            Ok(Some(<T as Config>::WeightInfo::exec_script()).into())
-        } else {
-            Ok(Some(<T as Config>::WeightInfo::exec_script()).into())
-            // TODO should return error
-            // Err(Error::<T>::MisMatchTimeLock.into())
         }
     }
 }

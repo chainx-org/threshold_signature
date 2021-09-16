@@ -1,7 +1,7 @@
 use crate::{
     mock::{self, *},
     primitive::OpCode,
-    AddrToScript, Error, Pallet, ScriptHashToAddr,
+    AddrToPubkey, Error, Pallet, ScriptHashToAddr,
 };
 use codec::Decode;
 use frame_support::{assert_noop, assert_ok};
@@ -18,17 +18,17 @@ fn generate_address_should_work() {
             .unwrap();
         let bc = hex::decode("a20c839d955cb10e58c6cbc75812684ad3a1a8f24a503e1c07f5e4944d974d3b")
             .unwrap();
-        let scripts = vec![abc, ab, ac, bc];
+        let pubkeys = vec![abc, ab, ac, bc];
         assert_ok!(Pallet::<Test>::generate_address(
             Origin::signed(who),
-            scripts
+            pubkeys
         ));
         let tweaked =
             &hex::decode("001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049")
                 .unwrap();
         let addr =
             <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
-        assert!(AddrToScript::<Test>::contains_key(addr));
+        assert!(AddrToPubkey::<Test>::contains_key(addr));
     });
 }
 
@@ -37,9 +37,9 @@ fn generate_address_wrong_scripts() {
     new_test_ext().execute_with(|| {
         let who = 1;
         let abc = vec![1; 32];
-        let scripts = vec![abc];
+        let pubkeys = vec![abc];
         assert_noop!(
-            Pallet::<Test>::generate_address(Origin::signed(who), scripts),
+            Pallet::<Test>::generate_address(Origin::signed(who), pubkeys),
             Error::<Test>::MastBuildError
         );
 
@@ -47,9 +47,9 @@ fn generate_address_wrong_scripts() {
         let ac = vec![1; 32];
         let bc = vec![1; 32];
         let abc = vec![1; 32];
-        let scripts = vec![ab, ac, bc, abc];
+        let pubkeys = vec![ab, ac, bc, abc];
         assert_noop!(
-            Pallet::<Test>::generate_address(Origin::signed(who), scripts),
+            Pallet::<Test>::generate_address(Origin::signed(who), pubkeys),
             Error::<Test>::InvalidMast
         );
     });
@@ -64,8 +64,8 @@ fn pass_script_should_work() {
         let ab = hex::decode("7c9a72882718402bf909b3c1693af60501c7243d79ecc8cf030fa253eb136861").unwrap();
         let ac = hex::decode("b69af178463918a181a8549d2cfbe77884852ace9d8b299bddf69bedc33f6356").unwrap();
         let bc = hex::decode("a20c839d955cb10e58c6cbc75812684ad3a1a8f24a503e1c07f5e4944d974d3b").unwrap();
-        let scripts = vec![abc, ab.clone(), ac, bc];
-        assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), scripts));
+        let pubkeys = vec![abc, ab.clone(), ac, bc];
+        assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), pubkeys));
 
         let tweaked = &hex::decode("001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049").unwrap();
         let addr = <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
@@ -114,10 +114,10 @@ fn pass_script_with_invalid_signature() {
             .unwrap();
         let bc = hex::decode("a20c839d955cb10e58c6cbc75812684ad3a1a8f24a503e1c07f5e4944d974d3b")
             .unwrap();
-        let scripts = vec![abc, ab, ac, bc];
+        let pubkeys = vec![abc, ab, ac, bc];
         assert_ok!(Pallet::<Test>::generate_address(
             Origin::signed(who),
-            scripts
+            pubkeys
         ));
 
         let who = 1;
@@ -156,8 +156,8 @@ fn exec_script_should_work() {
         let ab = hex::decode("7c9a72882718402bf909b3c1693af60501c7243d79ecc8cf030fa253eb136861").unwrap();
         let ac = hex::decode("b69af178463918a181a8549d2cfbe77884852ace9d8b299bddf69bedc33f6356").unwrap();
         let bc = hex::decode("a20c839d955cb10e58c6cbc75812684ad3a1a8f24a503e1c07f5e4944d974d3b").unwrap();
-        let scripts = vec![abc, ab.clone(), ac, bc];
-        assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), scripts));
+        let pubkeys = vec![abc, ab.clone(), ac, bc];
+        assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), pubkeys));
 
         let tweaked = &hex::decode("001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049").unwrap();
         let addr = <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
@@ -180,8 +180,8 @@ fn exec_script_mismatch_time_lock() {
         let ab = hex::decode("7c9a72882718402bf909b3c1693af60501c7243d79ecc8cf030fa253eb136861").unwrap();
         let ac = hex::decode("b69af178463918a181a8549d2cfbe77884852ace9d8b299bddf69bedc33f6356").unwrap();
         let bc = hex::decode("a20c839d955cb10e58c6cbc75812684ad3a1a8f24a503e1c07f5e4944d974d3b").unwrap();
-        let scripts = vec![abc, ab.clone(), ac, bc];
-        assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), scripts));
+        let pubkeys = vec![abc, ab.clone(), ac, bc];
+        assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), pubkeys));
 
         let tweaked = &hex::decode("001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049").unwrap();
         let addr = <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
@@ -205,8 +205,8 @@ fn exec_script_no_pass_script() {
         let ab = hex::decode("7c9a72882718402bf909b3c1693af60501c7243d79ecc8cf030fa253eb136861").unwrap();
         let ac = hex::decode("b69af178463918a181a8549d2cfbe77884852ace9d8b299bddf69bedc33f6356").unwrap();
         let bc = hex::decode("a20c839d955cb10e58c6cbc75812684ad3a1a8f24a503e1c07f5e4944d974d3b").unwrap();
-        let scripts = vec![abc, ab.clone(), ac, bc];
-        assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), scripts));
+        let pubkeys = vec![abc, ab.clone(), ac, bc];
+        assert_ok!(Pallet::<Test>::generate_address(Origin::signed(who), pubkeys));
 
         let tweaked = &hex::decode("001604bef08d1fe4cefb2e75a2b786287821546f6acbe89570acc5d5a9bd5049").unwrap();
         let addr = <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
