@@ -316,7 +316,7 @@ impl<T: Config> Pallet<T> {
                 let pos = pallet_balances::Pallet::<T>::transfer(
                     RawOrigin::Signed(addr.clone()).into(),
                     T::Lookup::unlookup(account.clone()),
-                    amount.into(),
+                    amount,
                 )?;
                 ScriptHashToAddr::<T>::remove(script_hash);
                 Self::deposit_event(Event::<T>::ExecuteScript(
