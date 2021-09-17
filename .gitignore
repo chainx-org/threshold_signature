@@ -20,3 +20,5 @@
 
 # ide tool
 .idea/
+
+.DS_Store
