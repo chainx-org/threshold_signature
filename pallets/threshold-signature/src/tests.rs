@@ -20,8 +20,7 @@ fn generate_script_hash() {
         "bottom drive obey lake curtain smoke basket hold race lonely fit walk";
     let alice: AccountId = sr25519::Pair::from_string(&format!("{}//Alice", DEV_PHRASE), None)
         .unwrap()
-        .public()
-        .into();
+        .public();
     let call = OpCode::Transfer;
     let amount: Balance = 10 * 1_000_000_000_000;
     let time_lock: (BlockNumber, BlockNumber) = (0, 1000);
@@ -52,7 +51,7 @@ fn generate_control_block() -> Vec<Vec<u8>> {
         .collect::<Vec<XOnly>>();
     let mast = Mast::new(pubkeys);
     let proofs = mast
-        .generate_merkle_proof(&XOnly::try_from(ab.clone()).unwrap())
+        .generate_merkle_proof(&XOnly::try_from(ab).unwrap())
         .unwrap()
         .iter()
         .map(|n| n.to_vec())
@@ -67,7 +66,7 @@ fn generate_control_block() -> Vec<Vec<u8>> {
         ],
         control_block
             .iter()
-            .map(|c| hex::encode(c))
+            .map(hex::encode)
             .collect::<Vec<_>>()
     );
     control_block
