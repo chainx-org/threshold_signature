@@ -64,10 +64,7 @@ fn generate_control_block() -> Vec<Vec<u8>> {
             "e17a23050f6f6db2f4218ce9f7c14edd21c5f24818157103c5a8524d7014c0dd",
             "0bac21362eecf9223bc477d6dfbbe02066a911eba752faedb26d881c466ea80f",
         ],
-        control_block
-            .iter()
-            .map(hex::encode)
-            .collect::<Vec<_>>()
+        control_block.iter().map(hex::encode).collect::<Vec<_>>()
     );
     control_block
 }
