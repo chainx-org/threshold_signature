@@ -6,6 +6,33 @@
 ## Storage
 - `ScriptHashToAddr`: is a Map that stores the mapping of script hash to threshold signature address.
 
+## Types
+
+~~~json
+{
+ "OpCode": {
+    "_enum": [
+      "Transfer"
+    ]
+  }
+}
+~~~
+
+# Rpc
+
+- `ts_computeScriptHash`
+
+  ~~~rust
+  fn compute_script_hash(   
+    &self,
+    account: AccountId32,
+    call: OpCode,
+    amount: u128,
+    time_lock: (u32, u32),
+    at: Option<BlockHash>,
+  ) -> Result<String>;
+  ~~~
+
 ## Call
 
 - `pass_script(origin, addr, signature, pubkey, control_block, message, script_hash)`
@@ -31,18 +58,6 @@
   `call`: Action represented by the script.    
   `amount`: The number represented by the script.    
   `time_lock`: Time lock required for script execution. The script must meet the time lock limit before it can be executed successfully      
-
-## Types
-
-~~~json
-{
- "OpCode": {
-    "_enum": [
-      "Transfer"
-    ]
-  }
-}
-~~~
 
 ## Tests
 
