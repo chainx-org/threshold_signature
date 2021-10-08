@@ -41,8 +41,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
 /// Import the threshold-signature pallet.
-pub use pallet_threshold_signature::primitive::{Message, Pubkey, Signature as TSignature};
-use sp_runtime::DispatchError;
+pub use pallet_threshold_signature::primitive::{Message, OpCode, Pubkey, ScriptHash, Signature as TSignature};
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -492,14 +491,13 @@ impl_runtime_apis! {
         }
     }
     impl pallet_threshold_signature_rpc_runtime_api::ThresholdSignatureApi<Block> for Runtime {
-        fn verify_threshold_signature(
-            addr: AccountId,
-            signature: TSignature,
-            pubkey: Pubkey,
-            control_block: Vec<Vec<u8>>,
-            message: Message,
-        ) -> Result<bool, DispatchError> {
-            ThresholdSignature::apply_verify_threshold_signature(addr, signature, pubkey, control_block, message)
+        fn compute_script_hash(
+            account: AccountId,
+            call: OpCode,
+            amount: Balance,
+            time_lock: (BlockNumber, BlockNumber),
+        ) -> ScriptHash {
+            ThresholdSignature::compute_script_hash(account, call, amount, time_lock)
         }
     }
 }

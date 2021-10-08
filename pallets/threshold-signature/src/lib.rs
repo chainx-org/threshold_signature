@@ -279,12 +279,6 @@ impl<T: Config> Pallet<T> {
         amount: BalanceOf<T>,
         time_lock: (T::BlockNumber, T::BlockNumber),
     ) -> ScriptHash {
-        log::info!("account:{:?}", account.encode());
-        log::info!("call:{:?}", u8::from(call.clone()));
-        log::info!("amount:{:?}", amount);
-        log::info!("time_lock.0:{:?}", time_lock.0.encode());
-        log::info!("time_lock.1:{:?}", time_lock.1.encode());
-
         let mut input: Vec<u8> = vec![];
         input.extend(&account.encode());
         input.push(call.into());
@@ -301,7 +295,6 @@ impl<T: Config> Pallet<T> {
         time_lock: (T::BlockNumber, T::BlockNumber),
         script_hash: ScriptHash,
     ) -> DispatchResultWithPostInfo {
-        log::info!("script_hash:{:?}", script_hash);
         if !ScriptHashToAddr::<T>::contains_key(script_hash.clone()) {
             return Err(Error::<T>::NoPassScript.into());
         }

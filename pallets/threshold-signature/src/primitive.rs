@@ -4,6 +4,9 @@ use codec::{Decode, Encode};
 
 use frame_support::inherent::Vec;
 
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+
 /// The leaf node of the mast structure is usually the tag hash of the pubkey
 pub type Pubkey = Vec<u8>;
 
@@ -18,6 +21,7 @@ pub type ScriptHash = Vec<u8>;
 
 /// Opcodes in custom scripts
 #[derive(Clone, Debug, Decode, Encode, PartialEq)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum OpCode {
     Transfer,
 }

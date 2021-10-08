@@ -4,37 +4,9 @@ use crate::{
     primitive::OpCode,
     Error, Pallet, ScriptHashToAddr,
 };
-use bitcoin_hashes::{hex::ToHex, sha256, Hash};
-use codec::{Decode, Encode};
+use codec::Decode;
 use core::convert::TryFrom;
 use frame_support::{assert_noop, assert_ok};
-use sp_core::{sr25519, Pair};
-use sp_runtime::traits::{IdentifyAccount, Verify};
-
-#[test]
-fn generate_script_hash() {
-    type AccountId = <<sr25519::Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-    type Balance = u128;
-    type BlockNumber = u32;
-    const DEV_PHRASE: &str =
-        "bottom drive obey lake curtain smoke basket hold race lonely fit walk";
-    let alice: AccountId = sr25519::Pair::from_string(&format!("{}//Alice", DEV_PHRASE), None)
-        .unwrap()
-        .public();
-    let call = OpCode::Transfer;
-    let amount: Balance = 10 * 1_000_000_000_000;
-    let time_lock: (BlockNumber, BlockNumber) = (0, 1000);
-    let mut input: Vec<u8> = vec![];
-    input.extend(&alice.encode());
-    input.push(call.into());
-    input.extend(&amount.encode());
-    input.extend(&time_lock.0.encode());
-    input.extend(&time_lock.1.encode());
-    assert_eq!(
-        "2ad121d05a26705dfe7e8005d2a87f9c035c4f439d18f6b2a4fbae6cc6012734",
-        sha256::Hash::hash(&input).to_hex()
-    );
-}
 
 fn generate_control_block() -> Vec<Vec<u8>> {
     let abc =

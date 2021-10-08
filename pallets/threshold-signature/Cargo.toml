@@ -28,7 +28,7 @@ sha2 = { version = "0.9.5", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
 rand = { version = "0.8.4", default-features = false, features = ["alloc"] }
 rand_core = { version = "0.6.3", default-features = false, features = ["alloc"] }
-serde = { version = "=1.0", features = ["derive"] }
+serde = { version = "=1.0", features = ["derive"], optional = true }
 serde_json = { version = "^1.0" }
 serde_derive = { version = "1.0", default-features = false }
 log = "0.4"
@@ -52,6 +52,7 @@ std = [
     "bitcoin_hashes/std",
     "hex/std",
     "schnorrkel/std",
+    "serde",
     "curve25519-dalek/std"
 ]
 no-std = [
