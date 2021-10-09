@@ -59,7 +59,10 @@ where
         let at = BlockId::hash(at.unwrap_or_else(||
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash));
-        Ok(hex::encode(api.compute_script_hash(&at, account, call, amount, time_lock).map_err(runtime_error_into_rpc_err)?))
+        Ok(hex::encode(
+            api.compute_script_hash(&at, account, call, amount, time_lock)
+                .map_err(runtime_error_into_rpc_err)?,
+        ))
     }
 }
 

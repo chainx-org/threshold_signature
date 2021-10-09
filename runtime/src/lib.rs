@@ -41,7 +41,9 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
 /// Import the threshold-signature pallet.
-pub use pallet_threshold_signature::primitive::{Message, OpCode, Pubkey, ScriptHash, Signature as TSignature};
+pub use pallet_threshold_signature::primitive::{
+    Message, OpCode, Pubkey, ScriptHash, Signature as TSignature,
+};
 
 /// An index to a block.
 pub type BlockNumber = u32;
