@@ -51,7 +51,7 @@
   
   `call`: The transaction that needs to be called after the threshold signature verification is passed.   
 
-- `exec_script(origin, call, amount, time_lock)`
+- `exec_script(origin, target, call, amount, time_lock)`
 
   The user takes the initiative to execute the truly authorized script.      
   `origin`: Signed executor of the script. It must be `pass_script` to complete the script authorized to the user before the user can execute successfully
@@ -173,6 +173,6 @@ The above-mentioned authorized script is the operation of transferring money fro
 
 The picture above is the transfer to the threshold signature address **`5Pe8v2KPm5dfdgRPDjAWdBSmWva7aeEH5nbZpYsHBX3mAVPK`**
 
-![](https://cdn.jsdelivr.net/gh/AAweidai/PictureBed@master/taproot/1631799384507-1631799384474.png)
+![](https://cdn.jsdelivr.net/gh/hacpy/PictureBed@master/Document/1635133723155-1635133723152.png)
 
 As shown in the figure above, when the block height is between 0 and 1000, Alice can actively execute the script. After the execution of the script is completed, 10 unit will be transferred to Alice from the threshold signature address.
