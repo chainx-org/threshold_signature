@@ -55,9 +55,13 @@
 
   The user takes the initiative to execute the truly authorized script.      
   `origin`: Signed executor of the script. It must be `pass_script` to complete the script authorized to the user before the user can execute successfully
+  
   `target`: Receiver address.
-  `call`: Action represented by the script.    
+  
+  `call`: Action represented by the script.
+  
   `amount`: The number represented by the script.    
+  
   `time_lock`: Time lock required for script execution. The script must meet the time lock limit before it can be executed successfully      
 
 ## Tests
