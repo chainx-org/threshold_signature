@@ -51,8 +51,7 @@ fn pass_script_should_work() {
         let signature_ab = hex::decode("7227f84f853853527488ba5b9939c56dd4ecd0ae96687e0d8d4d5da10cb4e6651cb2aca89236f3c3766d80e3b2ab37c74abb91ad6bb66677a0f1e3bd7e68118f").unwrap();
         let ab = hex::decode("7c9a72882718402bf909b3c1693af60501c7243d79ecc8cf030fa253eb136861").unwrap();
         let control_block = generate_control_block();
-        let message = b"We are legion!".to_vec();
-        assert_eq!("576520617265206c6567696f6e21", hex::encode(&message));
+        let message = 1000;
         let script_hash = Pallet::<Test>::compute_script_hash(who, OpCode::Transfer, 10, (0, 10));
         assert_ok!(Pallet::<Test>::pass_script(Origin::signed(who), addr, signature_ab, ab, control_block, message, script_hash.clone()));
         assert_eq!(ScriptHashToAddr::<Test>::get(script_hash), addr);
@@ -72,7 +71,7 @@ fn pass_script_with_invalid_signature() {
             <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
         let signature_ab = vec![1; 64];
         let control_block = generate_control_block();
-        let message = b"We are legion!".to_vec();
+        let message = 1000;
         let script_hash = Pallet::<Test>::compute_script_hash(who, OpCode::Transfer, 10, (0, 10));
         assert_noop!(
             Pallet::<Test>::pass_script(
@@ -99,8 +98,7 @@ fn exec_script_should_work() {
         let addr = <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
         let signature_ab = hex::decode("7227f84f853853527488ba5b9939c56dd4ecd0ae96687e0d8d4d5da10cb4e6651cb2aca89236f3c3766d80e3b2ab37c74abb91ad6bb66677a0f1e3bd7e68118f").unwrap();
         let control_block = generate_control_block();
-        let message = b"We are legion!".to_vec();
-        assert_eq!("576520617265206c6567696f6e21", hex::encode(&message));
+        let message = 1000;
         let script_hash = Pallet::<Test>::compute_script_hash(who, OpCode::Transfer, 10, (0, 10));
         assert_ok!(Pallet::<Test>::pass_script(Origin::signed(who), addr, signature_ab, ab, control_block, message, script_hash));
         assert_ok!(Pallet::<Test>::exec_script(Origin::signed(who), who, OpCode::Transfer, 10, (0, 10)));
@@ -118,8 +116,7 @@ fn exec_script_mismatch_time_lock() {
         let addr = <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
         let signature_ab = hex::decode("7227f84f853853527488ba5b9939c56dd4ecd0ae96687e0d8d4d5da10cb4e6651cb2aca89236f3c3766d80e3b2ab37c74abb91ad6bb66677a0f1e3bd7e68118f").unwrap();
         let control_block = generate_control_block();
-        let message = b"We are legion!".to_vec();
-        assert_eq!("576520617265206c6567696f6e21", hex::encode(&message));
+        let message = 1000;
         let script_hash = Pallet::<Test>::compute_script_hash(who, OpCode::Transfer, 10, (2, 10));
         assert_ok!(Pallet::<Test>::pass_script(Origin::signed(who), addr, signature_ab, ab, control_block, message, script_hash));
         assert_noop!(Pallet::<Test>::exec_script(Origin::signed(who), who, OpCode::Transfer, 10, (2, 10)), Error::<Test>::MisMatchTimeLock);
@@ -137,8 +134,8 @@ fn exec_script_no_pass_script() {
         let addr = <mock::Test as frame_system::Config>::AccountId::decode(&mut &tweaked[..]).unwrap();
         let signature_ab = hex::decode("7227f84f853853527488ba5b9939c56dd4ecd0ae96687e0d8d4d5da10cb4e6651cb2aca89236f3c3766d80e3b2ab37c74abb91ad6bb66677a0f1e3bd7e68118f").unwrap();
         let control_block = generate_control_block();
-        let message = b"We are legion!".to_vec();
-        assert_eq!("576520617265206c6567696f6e21", hex::encode(&message));
+        let message = 1000;
+        
         let script_hash = Pallet::<Test>::compute_script_hash(who, OpCode::Transfer, 10, (0, 10));
         assert_ok!(Pallet::<Test>::pass_script(Origin::signed(who), addr, signature_ab, ab, control_block, message, script_hash));
         assert_ok!(Pallet::<Test>::exec_script(Origin::signed(who), who, OpCode::Transfer, 10, (0, 10)));

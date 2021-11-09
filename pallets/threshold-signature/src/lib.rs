@@ -53,6 +53,7 @@ pub mod pallet {
         pallet_prelude::*,
     };
     use frame_system::pallet_prelude::*;
+    use sp_runtime::SaturatedConversion;
 
     /// Configure the pallet by specifying the parameters and types on which it depends.
     #[pallet::config]
@@ -77,6 +78,11 @@ pub mod pallet {
     pub type ScriptHashToAddr<T: Config> =
         StorageMap<_, Twox64Concat, ScriptHash, T::AccountId, ValueQuery>;
 
+    #[pallet::storage]
+    #[pallet::getter(fn signature_survival_height)]
+    pub type SignatureSurvivalHeight<T: Config> =
+        StorageMap<_, Twox64Concat, Signature, u32, ValueQuery>;
+
     #[pallet::event]
     #[pallet::metadata(T::AccountId = "AccountId")]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
@@ -93,6 +99,10 @@ pub mod pallet {
             BalanceOf<T>,
             (T::BlockNumber, T::BlockNumber),
         ),
+        /// Use signature in the current block. [signature, height]
+        UseSignature(Signature, u32),
+        /// Remove expired signature
+        RemoveSignature(Signature),
     }
 
     // Errors inform users that something went wrong.
@@ -119,6 +129,10 @@ pub mod pallet {
         MisMatchTimeLock,
         /// Scripts that did not pass verification
         NoPassScript,
+        // Signature existed
+        ExistedSignature,
+        // Signature has expired
+        ExpiredSignature,
     }
 
     #[pallet::call]
@@ -143,11 +157,20 @@ pub mod pallet {
             signature: Vec<u8>,
             pubkey: Vec<u8>,
             control_block: Vec<u8>,
-            message: Vec<u8>,
+            height: u32,
             script_hash: Vec<u8>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
-            Self::apply_pass_script(addr, signature, pubkey, control_block, message, script_hash)
+            // check if signature in storage
+            if SignatureSurvivalHeight::<T>::contains_key(&signature) {
+                return Err(Error::<T>::ExistedSignature.into());
+            }
+            // check if signature has expired
+            if height < frame_system::Pallet::<T>::block_number().saturated_into::<u32>() {
+                return Err(Error::<T>::ExpiredSignature.into());
+            }
+            // approve the transaction script
+            Self::apply_pass_script(addr, signature, pubkey, control_block, height, script_hash)
         }
 
         /// The user takes the initiative to execute the truly authorized script.
@@ -168,7 +191,11 @@ pub mod pallet {
             amount: BalanceOf<T>,
             time_lock: (T::BlockNumber, T::BlockNumber),
         ) -> DispatchResultWithPostInfo {
-            // let who = ensure_signed(origin)?;
+            // remove expired signature
+            Self::remove_expired_signature(
+                frame_system::Pallet::<T>::block_number().saturated_into::<u32>(),
+            );
+            // execute script
             let script_hash =
                 Self::compute_script_hash(target.clone(), call.clone(), amount, time_lock);
             Self::apply_exec_script(target, call, amount, time_lock, script_hash)?;
@@ -183,10 +210,11 @@ impl<T: Config> Pallet<T> {
         signature: Signature,
         pubkey: Pubkey,
         control_block: Vec<u8>,
-        message: Message,
+        height: u32,
         script_hash: ScriptHash,
     ) -> DispatchResult {
         let mut cb = vec![];
+        let message = height.to_be_bytes().to_vec();
         let num: usize = if control_block.len() % 32 == 0 {
             control_block.len() / 32
         } else {
@@ -198,12 +226,21 @@ impl<T: Config> Pallet<T> {
             cb.push(keys.to_vec());
         }
 
-        let executable =
-            Self::apply_verify_threshold_signature(addr.clone(), signature, pubkey, cb, message)?;
+        let executable = Self::apply_verify_threshold_signature(
+            addr.clone(),
+            signature.clone(),
+            pubkey,
+            cb,
+            message,
+        )?;
 
         if executable {
             // TODO What if the same script corresponds to different threshold signature addresses？
             ScriptHashToAddr::<T>::insert(script_hash.clone(), addr.clone());
+            // Store signature with survival height
+            SignatureSurvivalHeight::<T>::insert(signature.clone(), height.clone());
+
+            Self::deposit_event(Event::<T>::UseSignature(signature, height));
             Self::deposit_event(Event::<T>::PassScript(script_hash, addr));
         }
         Ok(())
@@ -294,6 +331,15 @@ impl<T: Config> Pallet<T> {
         input.extend(&time_lock.0.encode());
         input.extend(&time_lock.1.encode());
         sha256::Hash::hash(&input).to_vec()
+    }
+
+    fn remove_expired_signature(height: u32) {
+        let signatures = SignatureSurvivalHeight::<T>::iter();
+        for (signature, survival_height) in signatures {
+            if survival_height < height {
+                SignatureSurvivalHeight::<T>::remove(signature);
+            }
+        }
     }
 
     fn apply_exec_script(
