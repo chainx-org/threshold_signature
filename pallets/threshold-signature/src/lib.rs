@@ -101,8 +101,6 @@ pub mod pallet {
         ),
         /// Use signature in the current block. [signature, height]
         UseSignature(Signature, u32),
-        /// Remove expired signature
-        RemoveSignature(Signature),
     }
 
     // Errors inform users that something went wrong.
@@ -157,7 +155,7 @@ pub mod pallet {
             signature: Vec<u8>,
             pubkey: Vec<u8>,
             control_block: Vec<u8>,
-            height: u32,
+            message: u32,
             script_hash: Vec<u8>,
         ) -> DispatchResult {
             ensure_signed(origin)?;
@@ -166,11 +164,11 @@ pub mod pallet {
                 return Err(Error::<T>::ExistedSignature.into());
             }
             // check if signature has expired
-            if height < frame_system::Pallet::<T>::block_number().saturated_into::<u32>() {
+            if message < frame_system::Pallet::<T>::block_number().saturated_into::<u32>() {
                 return Err(Error::<T>::ExpiredSignature.into());
             }
             // approve the transaction script
-            Self::apply_pass_script(addr, signature, pubkey, control_block, height, script_hash)
+            Self::apply_pass_script(addr, signature, pubkey, control_block, message, script_hash)
         }
 
         /// The user takes the initiative to execute the truly authorized script.
