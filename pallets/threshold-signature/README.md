@@ -154,7 +154,7 @@ pubkey_abc    +     root
 
 Pass Script is the transaction call is to verify the threshold signature address and authorize the script. As shown in the figure above:
 
-- Fill in `addr` with **`5Pe8v2KPm5dfdgRPDjAWdBSmWva7aeEH5nbZpYsHBX3mAVPK`**. 
+- Fill in `addr` with **`0x3ee8244d248f1e06f72ab7d38ee7f25024d33f555eb585e167816f03c7cde719`**. 
 - Fill in `signature` with `A, B's aggregate signature of the above message`. 
 - Fill in the `pubkey` with `Aggregate public key of A, B`. 
 - Fill in `control_block` in order: [`Aggregate public key of A, B, C`,   `tag_hash(BC)`, `tag_hash(AC)`]
@@ -165,11 +165,11 @@ After the submission is successful, the five parameters of `addr`, `signature`, 
 
 ### Exec Script
 
-The above-mentioned authorized script is the operation of transferring money from a  threshold signature address `5Pe8v2KPm5dfdgRPDjAWdBSmWva7aeEH5nbZpYsHBX3mAVPK` to Alice. Therefore, the balance needs to be transferred to the threshold signature address first, and then the transfer can be performed after the address has a balance.
+The above-mentioned authorized script is the operation of transferring money from a  threshold signature address `0x3ee8244d248f1e06f72ab7d38ee7f25024d33f555eb585e167816f03c7cde719` to Alice. Therefore, the balance needs to be transferred to the threshold signature address first, and then the transfer can be performed after the address has a balance.
 
 ![](https://cdn.jsdelivr.net/gh/AAweidai/PictureBed@master/taproot/1631104610241-1631104610236.png)
 
-The picture above is the transfer to the threshold signature address **`5Pe8v2KPm5dfdgRPDjAWdBSmWva7aeEH5nbZpYsHBX3mAVPK`**
+The picture above is the transfer to the threshold signature address **`0x3ee8244d248f1e06f72ab7d38ee7f25024d33f555eb585e167816f03c7cde719`**
 
 ![](https://cdn.jsdelivr.net/gh/hacpy/PictureBed@master/Document/1635133723155-1635133723152.png)
 
